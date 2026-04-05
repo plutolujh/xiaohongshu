@@ -3,8 +3,21 @@ services:
     name: xiaohongshu-food-share
     env: node
     region: singapore
+    plan: free
+    rootDir: xiaohongshu
     buildCommand: npm install && npm run build
     startCommand: npm start
+    buildFilter:
+      paths:
+        - xiaohongshu/package.json
+        - xiaohongshu/package-lock.json
+        - xiaohongshu/src/**/*
+        - xiaohongshu/server.js
+        - xiaohongshu/vite.config.js
+      ignoredPaths:
+        - xiaohongshu/.gitignore
+        - xiaohongshu/README.md
+        - xiaohongshu/CHANGELOG.md
     envVars:
       - key: NODE_ENV
         value: production

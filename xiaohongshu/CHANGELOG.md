@@ -30,6 +30,13 @@
   - 支持前端路由的通配符处理
   - 优化package.json依赖配置
 
+### Bug修复
+- 修复Render部署时找不到package.json的问题
+  - 从.gitignore中移除package-lock.json
+  - 生成并提交package-lock.json文件
+  - 添加buildFilter配置指定构建路径
+  - 明确指定使用npm作为包管理器
+
 ### UI优化
 - 添加模板选择器卡片样式
 - 优化模板选择交互体验
