@@ -188,3 +188,57 @@ MIT License
 ## 贡献
 
 欢迎提交Issue和Pull Request！
+
+## 部署
+
+### Render部署
+
+本项目支持一键部署到Render平台。
+
+#### 方式一：使用render.yaml配置文件
+
+1. Fork本项目到你的GitHub账号
+2. 在Render中创建新的Web Service
+3. 连接你的GitHub仓库
+4. Render会自动检测`render.yaml`配置文件
+5. 点击部署即可
+
+#### 方式二：手动配置
+
+1. 在Render中创建新的Web Service
+2. 连接GitHub仓库
+3. 配置以下设置：
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm start`
+   - **Environment**: Node
+4. 添加环境变量：
+   - `NODE_ENV`: `production`
+   - `JWT_SECRET`: （点击Generate生成随机值）
+5. 点击部署
+
+### 环境变量说明
+
+| 变量名 | 说明 | 是否必需 | 默认值 |
+|--------|------|----------|--------|
+| `NODE_ENV` | 运行环境 | 是 | `development` |
+| `PORT` | 服务器端口 | 否 | `3001` |
+| `JWT_SECRET` | JWT密钥 | 生产环境必需 | - |
+
+### 部署注意事项
+
+1. **数据库**：生产环境使用SQLite数据库，数据存储在`database.sqlite`文件中
+2. **静态文件**：生产环境下，Express会自动提供前端静态文件服务
+3. **图片上传**：图片以Base64格式存储在数据库中，注意数据库大小限制
+4. **内存限制**：Render免费版有内存限制，建议升级到付费版本以获得更好的性能
+
+### 本地生产环境测试
+
+```bash
+# 构建前端
+npm run build
+
+# 启动生产服务器
+NODE_ENV=production npm start
+```
+
+访问 http://localhost:3001 即可查看生产版本。

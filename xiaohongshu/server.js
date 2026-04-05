@@ -9,11 +9,13 @@ import fs from 'fs'
 import logger from './src/utils/logger.js'
 import monitor from './src/utils/monitor.js'
 
-// JWT密钥
-const JWT_SECRET = 'your-secret-key-change-this-in-production'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production'
 
 const app = express()
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 
 // JWT验证中间件
 function authenticateToken(req, res, next) {
@@ -90,11 +92,20 @@ function validateRequest(req, res, next) {
 }
 
 // 优化CORS配置，限制为特定域名
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? [process.env.FRONTEND_URL || '*']
+  : ['http://localhost:3000', 'http://localhost:3002']
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3002'], // 前端开发服务器地址
+  origin: allowedOrigins,
   credentials: true
 }))
 app.use(express.json({ limit: '10mb' }))
+
+// 生产环境下提供静态文件
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(join(__dirname, 'dist')))
+}
 
 // 日志记录中间件
 app.use((req, res, next) => {
@@ -567,8 +578,18 @@ initDb().then(() => {
     res.json({ success: true, status })
   })
 
+  // 生产环境下处理前端路由
+  if (process.env.NODE_ENV === 'production') {
+    app.get('*', (req, res) => {
+      res.sendFile(join(__dirname, 'dist', 'index.html'))
+    })
+  }
+
   // 服务器启动
   app.listen(PORT, () => {
-    logger.info(`API Server running on http://localhost:${PORT}`)
+    logger.info(`Server running on port ${PORT}`)
+    if (process.env.NODE_ENV === 'production') {
+      logger.info('Running in production mode')
+    }
   })
 })
