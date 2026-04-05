@@ -1,0 +1,401 @@
+.note-detail {
+  min-height: 100vh;
+  background: #f8f8f8;
+  padding: 80px 20px 40px;
+}
+
+.note-detail-container {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.note-detail-back {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: #666;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.note-detail-back:hover {
+  color: #ff2442;
+}
+
+.note-detail-images {
+  margin-bottom: 0;
+}
+
+.note-detail-image {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.note-detail-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.note-detail-image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.note-detail-image-item {
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+.note-detail-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.note-detail-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: -40px;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.note-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.note-detail-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+  flex: 1;
+}
+
+.note-detail-like {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.note-detail-like:hover {
+  background: #f0f0f0;
+}
+
+.note-detail-like.liked {
+  background: #fff0f0;
+  color: #ff2442;
+}
+
+.note-detail-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.note-detail-edit:hover {
+  background: #f0f0f0;
+  color: #ff2442;
+}
+
+.note-detail-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 20px;
+}
+
+.note-detail-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #f5f5f5;
+}
+
+.note-detail-author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.note-detail-author-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.note-detail-date {
+  font-size: 13px;
+  color: #999;
+}
+
+.note-detail-section {
+  margin-bottom: 24px;
+}
+
+.note-detail-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px;
+}
+
+.note-detail-section p {
+  font-size: 15px;
+  color: #666;
+  margin: 0;
+  line-height: 1.7;
+}
+
+.note-detail-section pre {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  font-family: inherit;
+  background: #fafafa;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.note-detail-loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+/* 评论样式 */
+.note-detail-comments {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.note-detail-comments h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 20px;
+}
+
+.comment-form {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  flex-shrink: 0;
+}
+
+.comment-input-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment-reply-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #666;
+}
+
+.comment-cancel-reply {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.comment-cancel-reply:hover {
+  color: #666;
+}
+
+.comment-input {
+  flex: 1;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 18px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.comment-input:focus {
+  border-color: #ff2442;
+}
+
+.comment-submit {
+  padding: 8px 20px;
+  background: #ff2442;
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.comment-submit:hover {
+  background: #e62039;
+}
+
+.comment-login-tip {
+  padding: 12px 16px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #999;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.comment-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.comment-author {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.comment-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.comment-reply-quote {
+  background: #f5f5f5;
+  border-left: 3px solid #ff2442;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.reply-quote-author {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff2442;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.reply-quote-content {
+  font-size: 13px;
+  color: #666;
+  display: block;
+}
+
+.comment-text {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.comment-reply,
+.comment-delete {
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: #999;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.comment-item:hover .comment-reply,
+.comment-item:hover .comment-delete {
+  opacity: 1;
+}
+
+.comment-reply:hover {
+  color: #1890ff;
+}
+
+.comment-delete:hover {
+  color: #ff2442;
+}
+
+.comment-empty {
+  text-align: center;
+  padding: 24px;
+  color: #999;
+  font-size: 14px;
+}

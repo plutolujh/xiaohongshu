@@ -1,0 +1,100 @@
+[      69ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:21548
+[      71ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4433
+[      71ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4433
+[  193548ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:21548
+[  193555ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4433
+[  193555ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4433
+[  207443ms] Error: useAuth must be used within AuthProvider
+    at useAuth (http://localhost:3000/src/context/AuthContext.jsx?t=1775206541228:81:11)
+    at Navbar (http://localhost:3000/src/components/Navbar.jsx?t=1775206541228:23:28)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:11546:26)
+    at mountIndeterminateComponent (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:14924:21)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:15912:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3672:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3697:24)
+    at invokeGuardedCallback (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3731:39)
+    at beginWork$1 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19763:15)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19196:20)
+[  207444ms] Error: useAuth must be used within AuthProvider
+    at useAuth (http://localhost:3000/src/context/AuthContext.jsx?t=1775206541228:81:11)
+    at Navbar (http://localhost:3000/src/components/Navbar.jsx?t=1775206541228:23:28)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:11546:26)
+    at mountIndeterminateComponent (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:14924:21)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:15912:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3672:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3697:24)
+    at invokeGuardedCallback (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3731:39)
+    at beginWork$1 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19763:15)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19196:20)
+[  207445ms] [ERROR] The above error occurred in the <Navbar> component:
+
+    at Navbar (http://localhost:3000/src/components/Navbar.jsx?t=1775206541228:23:28)
+    at div
+    at App
+    at AuthProvider (http://localhost:3000/src/context/AuthContext.jsx?t=1775206555263:23:32)
+    at Router (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4542:15)
+    at BrowserRouter (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:5288:5)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:14029
+[  207445ms] Error: useAuth must be used within AuthProvider
+    at useAuth (http://localhost:3000/src/context/AuthContext.jsx?t=1775206541228:81:11)
+    at Navbar (http://localhost:3000/src/components/Navbar.jsx?t=1775206541228:23:28)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:11546:26)
+    at mountIndeterminateComponent (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:14924:21)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:15912:22)
+    at beginWork$1 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19751:22)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19196:20)
+    at workLoopSync (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19135:13)
+    at renderRootSync (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19114:15)
+    at recoverFromConcurrentError (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:18734:28)
+[  207529ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:21548
+[  207532ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4433
+[  207532ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4433
+[  214612ms] Error: useAuth must be used within AuthProvider
+    at useAuth (http://localhost:3000/src/context/AuthContext.jsx?t=1775206555263:81:11)
+    at Navbar (http://localhost:3000/src/components/Navbar.jsx?t=1775206555263:23:28)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:11546:26)
+    at mountIndeterminateComponent (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:14924:21)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:15912:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3672:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3697:24)
+    at invokeGuardedCallback (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3731:39)
+    at beginWork$1 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19763:15)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19196:20)
+[  214612ms] Error: useAuth must be used within AuthProvider
+    at useAuth (http://localhost:3000/src/context/AuthContext.jsx?t=1775206555263:81:11)
+    at Navbar (http://localhost:3000/src/components/Navbar.jsx?t=1775206555263:23:28)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:11546:26)
+    at mountIndeterminateComponent (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:14924:21)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:15912:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3672:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3697:24)
+    at invokeGuardedCallback (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:3731:39)
+    at beginWork$1 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19763:15)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19196:20)
+[  214613ms] [ERROR] The above error occurred in the <Navbar> component:
+
+    at Navbar (http://localhost:3000/src/components/Navbar.jsx?t=1775206555263:23:28)
+    at div
+    at App
+    at AuthProvider (http://localhost:3000/src/context/AuthContext.jsx?t=1775206562431:23:32)
+    at Router (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4542:15)
+    at BrowserRouter (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:5288:5)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:14029
+[  214613ms] Error: useAuth must be used within AuthProvider
+    at useAuth (http://localhost:3000/src/context/AuthContext.jsx?t=1775206555263:81:11)
+    at Navbar (http://localhost:3000/src/components/Navbar.jsx?t=1775206555263:23:28)
+    at renderWithHooks (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:11546:26)
+    at mountIndeterminateComponent (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:14924:21)
+    at beginWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:15912:22)
+    at beginWork$1 (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19751:22)
+    at performUnitOfWork (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19196:20)
+    at workLoopSync (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19135:13)
+    at renderRootSync (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:19114:15)
+    at recoverFromConcurrentError (http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:18734:28)
+[  214696ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/chunk-XPR23Y44.js?v=a68e22fe:21548
+[  214698ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4433
+[  214698ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=1afa6e15:4433

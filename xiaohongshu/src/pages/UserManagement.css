@@ -1,0 +1,280 @@
+.user-management-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.user-management-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.user-management-controls {
+  margin-bottom: 30px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.search-input:focus {
+  border-color: #ff2442;
+}
+
+.users-list {
+  display: grid;
+  gap: 20px;
+}
+
+.user-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.user-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-details h3 {
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.username {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.created-at {
+  font-size: 12px;
+  color: #999;
+}
+
+.user-badges {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.status-badge,
+.role-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-active {
+  background-color: #f6ffed;
+  color: #52c41a;
+  border: 1px solid #b7eb8f;
+}
+
+.status-inactive {
+  background-color: #fff2f0;
+  color: #ff4d4f;
+  border: 1px solid #ffccc7;
+}
+
+.role-badge {
+  background-color: #e6f7ff;
+  color: #1890ff;
+  border: 1px solid #91d5ff;
+}
+
+.user-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-edit,
+.btn-delete,
+.btn-save,
+.btn-cancel,
+.btn-status,
+.btn-role {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-edit {
+  background-color: #1890ff;
+  color: white;
+}
+
+.btn-edit:hover {
+  background-color: #40a9ff;
+}
+
+.btn-delete {
+  background-color: #ff2442;
+  color: white;
+}
+
+.btn-delete:hover {
+  background-color: #ff4d4f;
+}
+
+.btn-save {
+  background-color: #52c41a;
+  color: white;
+}
+
+.btn-save:hover {
+  background-color: #73d13d;
+}
+
+.btn-cancel {
+  background-color: #d9d9d9;
+  color: #666;
+}
+
+.btn-cancel:hover {
+  background-color: #bfbfbf;
+}
+
+.btn-deactivate {
+  background-color: #faad14;
+  color: white;
+}
+
+.btn-deactivate:hover {
+  background-color: #ffc53d;
+}
+
+.btn-activate {
+  background-color: #52c41a;
+  color: white;
+}
+
+.btn-activate:hover {
+  background-color: #73d13d;
+}
+
+.btn-role {
+  background-color: #722ed1;
+  color: white;
+}
+
+.btn-role:hover {
+  background-color: #9254de;
+}
+
+.user-edit-form {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: #666;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  outline: none;
+}
+
+.form-group input:focus {
+  border-color: #ff2442;
+}
+
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.loading {
+  text-align: center;
+  padding: 100px;
+  color: #999;
+  font-size: 18px;
+}
+
+.error {
+  text-align: center;
+  padding: 100px;
+  color: #ff2442;
+  font-size: 18px;
+}
+
+.no-users {
+  text-align: center;
+  padding: 50px;
+  color: #999;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .user-management-container {
+    padding: 10px;
+  }
+
+  .user-management-title {
+    font-size: 24px;
+  }
+
+  .user-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .user-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
