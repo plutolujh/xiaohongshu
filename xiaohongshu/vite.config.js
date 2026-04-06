@@ -6,6 +6,6 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    allowedHosts: ["tsunami-generated-coverage-rating.trycloudflare.com"],
+    allowedHosts: ["xiaohongshu-1k78.onrender.com"],
   },
 });
