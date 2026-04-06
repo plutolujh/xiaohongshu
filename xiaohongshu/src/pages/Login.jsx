@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import './Auth.css'
@@ -6,6 +6,7 @@ import './Auth.css'
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -13,12 +14,27 @@ export default function Login() {
 
   const from = location.state?.from?.pathname || '/'
 
+  // 页面加载时，从localStorage读取保存的用户名
+  useEffect(() => {
+    const savedUsername = localStorage.getItem('xiaohongshu_username')
+    if (savedUsername) {
+      setUsername(savedUsername)
+      setRemember(true)
+    }
+  }, [])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
-    const result = await login(username, password)
+    const result = await login(username, password, remember)
     if (result.success) {
+      // 如果选择记住我，保存用户名到localStorage
+      if (remember) {
+        localStorage.setItem('xiaohongshu_username', username)
+      } else {
+        localStorage.removeItem('xiaohongshu_username')
+      }
       navigate(from, { replace: true })
     } else {
       setError(result.message)
@@ -52,6 +68,17 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="请输入密码"
             />
+          </div>
+
+          <div className="auth-remember">
+            <label>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              记住我
+            </label>
           </div>
 
           <button type="submit" className="auth-button">

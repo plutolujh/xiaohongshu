@@ -125,15 +125,27 @@ export async function deleteCommentById(id) {
 const CURRENT_USER_KEY = 'xiaohongshu_current_user'
 
 export function getCurrentUser() {
-  const user = sessionStorage.getItem(CURRENT_USER_KEY)
-  return user ? JSON.parse(user) : null
+  // 先从localStorage读取，如果没有再从sessionStorage读取
+  const userLocal = localStorage.getItem(CURRENT_USER_KEY)
+  if (userLocal) {
+    return JSON.parse(userLocal)
+  }
+  const userSession = sessionStorage.getItem(CURRENT_USER_KEY)
+  return userSession ? JSON.parse(userSession) : null
 }
 
-export function setCurrentUser(user) {
+export function setCurrentUser(user, remember = false) {
+  // 清除两个存储中的用户信息
+  localStorage.removeItem(CURRENT_USER_KEY)
+  sessionStorage.removeItem(CURRENT_USER_KEY)
+  
   if (user) {
-    sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
-  } else {
-    sessionStorage.removeItem(CURRENT_USER_KEY)
+    // 根据remember参数决定存储位置
+    if (remember) {
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
+    } else {
+      sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
+    }
   }
 }
 

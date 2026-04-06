@@ -40,7 +40,8 @@ export function AuthProvider({ children }) {
         if (loginResult.success) {
           const user = loginResult.user
           const token = loginResult.token
-          setCurrentUser({ ...user, token })
+          // 注册成功后默认不记住用户
+          setCurrentUser({ ...user, token }, false)
           setUser({ ...user, token })
           return { success: true }
         } else {
@@ -56,7 +57,7 @@ export function AuthProvider({ children }) {
   }
 
   // 登录
-  const login = async (username, password) => {
+  const login = async (username, password, remember = false) => {
     if (!username || !password) {
       return { success: false, message: '请填写用户名和密码' }
     }
@@ -73,8 +74,8 @@ export function AuthProvider({ children }) {
       if (result.success) {
         const user = result.user
         const token = result.token
-        // 存储用户信息和token
-        setCurrentUser({ ...user, token })
+        // 存储用户信息和token，根据remember参数决定存储位置
+        setCurrentUser({ ...user, token }, remember)
         setUser({ ...user, token })
         return { success: true }
       } else {
@@ -90,6 +91,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setCurrentUser(null)
     setUser(null)
+    // 清除记住的用户名
+    localStorage.removeItem('xiaohongshu_username')
   }
 
   // 更新用户信息
