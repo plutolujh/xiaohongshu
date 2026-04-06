@@ -78,6 +78,74 @@
   color: #ff4757;
 }
 
+/* 图片导航按钮 */
+.image-modal-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background 0.2s;
+}
+
+.image-modal-nav:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.image-modal-prev {
+  left: -60px;
+}
+
+.image-modal-next {
+  right: -60px;
+}
+
+/* 图片计数器 */
+.image-modal-counter {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 14px;
+}
+
+/* 旋转按钮 */
+.image-modal-rotate {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.image-modal-rotate:hover {
+  transform: rotate(45deg);
+}
+
 .note-detail-images {
   margin-bottom: 0;
 }

@@ -11,6 +11,8 @@ export default function NoteDetail() {
   const [newComment, setNewComment] = useState('')
   const [replyToComment, setReplyToComment] = useState(null)
   const [selectedImage, setSelectedImage] = useState(null)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(-1)
+  const [rotation, setRotation] = useState(0)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -111,7 +113,11 @@ export default function NoteDetail() {
               <img 
                 src={images[0]} 
                 alt={note.title} 
-                onClick={() => setSelectedImage(images[0])}
+                onClick={() => {
+                  setSelectedImage(images[0])
+                  setSelectedImageIndex(0)
+                  setRotation(0)
+                }}
                 className="clickable-image"
               />
             </div>
@@ -122,7 +128,11 @@ export default function NoteDetail() {
                   <img 
                     src={img} 
                     alt={`${note.title}-${index + 1}`} 
-                    onClick={() => setSelectedImage(img)}
+                    onClick={() => {
+                      setSelectedImage(img)
+                      setSelectedImageIndex(index)
+                      setRotation(0)
+                    }}
                     className="clickable-image"
                   />
                 </div>
@@ -250,7 +260,52 @@ export default function NoteDetail() {
         <div className="image-modal" onClick={() => setSelectedImage(null)}>
           <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="image-modal-close" onClick={() => setSelectedImage(null)}>×</button>
-            <img src={selectedImage} alt="预览" className="image-modal-img" />
+            
+            {/* 图片导航按钮 */}
+            {images.length > 1 && (
+              <>
+                <button 
+                  className="image-modal-nav image-modal-prev"
+                  onClick={() => {
+                    const newIndex = (selectedImageIndex - 1 + images.length) % images.length
+                    setSelectedImage(images[newIndex])
+                    setSelectedImageIndex(newIndex)
+                    setRotation(0)
+                  }}
+                >
+                  ←
+                </button>
+                <button 
+                  className="image-modal-nav image-modal-next"
+                  onClick={() => {
+                    const newIndex = (selectedImageIndex + 1) % images.length
+                    setSelectedImage(images[newIndex])
+                    setSelectedImageIndex(newIndex)
+                    setRotation(0)
+                  }}
+                >
+                  →
+                </button>
+                <div className="image-modal-counter">
+                  {selectedImageIndex + 1} / {images.length}
+                </div>
+              </>
+            )}
+            
+            {/* 旋转按钮 */}
+            <button 
+              className="image-modal-rotate"
+              onClick={() => setRotation((prev) => (prev + 90) % 360)}
+            >
+              🔄
+            </button>
+            
+            <img 
+              src={selectedImage} 
+              alt="预览" 
+              className="image-modal-img"
+              style={{ transform: `rotate(${rotation}deg)` }}
+            />
           </div>
         </div>
       )}
