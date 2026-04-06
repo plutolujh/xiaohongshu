@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:3001/api'
+// 使用相对路径，适配不同环境
+const API_BASE = '/api'
 
 // 获取token
 function getToken() {
