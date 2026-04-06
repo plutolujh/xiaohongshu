@@ -31,11 +31,10 @@ export default function Navbar() {
           {user ? (
             <>
               <Link to="/publish" className="navbar-link">发布笔记</Link>
-              <div className="navbar-user">
+              <Link to="/profile" className="navbar-user">
                 <img src={user.avatar} alt={user.nickname} className="navbar-avatar" />
                 <span className="navbar-username">{user.nickname}</span>
-              </div>
-              <Link to="/profile" className="navbar-link">个人中心</Link>
+              </Link>
               <Link to="/feedback" className="navbar-link">意见反馈</Link>
               <Link to="/system-status" className="navbar-link">系统状态</Link>
               {isAdmin && (
@@ -74,7 +73,6 @@ export default function Navbar() {
           {user ? (
             <>
               <Link to="/publish" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>发布笔记</Link>
-              <Link to="/profile" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>个人中心</Link>
               <Link to="/feedback" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>意见反馈</Link>
               <Link to="/system-status" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>系统状态</Link>
               {isAdmin && (

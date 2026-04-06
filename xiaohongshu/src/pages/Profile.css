@@ -265,6 +265,22 @@
   flex: 1;
 }
 
+.profile-avatar-btn {
+  padding: 8px 16px;
+  background: #ff2442;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.profile-avatar-btn:hover {
+  background: #e62039;
+}
+
 .profile-form-actions {
   display: flex;
   gap: 12px;
@@ -336,4 +352,126 @@
   max-width: 500px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* 意见反馈部分样式 */
+.profile-feedback {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-top: 24px;
+}
+
+.profile-feedback h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 20px;
+}
+
+.profile-feedback-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-feedback-item {
+  background-color: #f9f9f9;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #ff2442;
+}
+
+.profile-feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.profile-feedback-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-pending {
+  background-color: #ffeb3b;
+  color: #333;
+}
+
+.status-processing {
+  background-color: #2196f3;
+  color: white;
+}
+
+.status-resolved {
+  background-color: #4caf50;
+  color: white;
+}
+
+.status-closed {
+  background-color: #9e9e9e;
+  color: white;
+}
+
+.profile-feedback-content {
+  margin-bottom: 12px;
+  line-height: 1.4;
+  color: #555;
+  font-size: 14px;
+}
+
+.profile-feedback-contact {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.profile-feedback-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #888;
+}
+
+.profile-feedback-category {
+  padding: 2px 6px;
+  background-color: #f0f0f0;
+  border-radius: 10px;
+}
+
+.profile-empty-feedback {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.profile-empty-feedback p {
+  margin: 0 0 16px;
+}
+
+.profile-feedback-btn {
+  display: inline-block;
+  padding: 10px 24px;
+  background: #ff2442;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.profile-feedback-btn:hover {
+  background: #e62039;
 }

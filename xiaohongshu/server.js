@@ -144,6 +144,9 @@ app.use((req, res, next) => {
       monitor.incrementErrorCount()
     }
     
+    // 记录访问信息
+    monitor.recordAccessInfo(req.method, req.path, res.statusCode)
+    
     // 记录响应完成
     logger.info('API Response', {
       method: req.method,
@@ -330,6 +333,26 @@ async function initDb() {
     })
 
     saveDb()
+  }
+  
+  // 检查并更新demo用户的密码，如果是明文则加密
+  try {
+    const stmt = db.prepare('SELECT password FROM users WHERE username = ?')
+    stmt.bind(['demo'])
+    const result = stmt.step()
+    if (result) {
+      const user = stmt.getAsObject()
+      // 检查密码是否为明文（长度小于60，bcrypt哈希值长度为60）
+      if (user.password && user.password.length < 60) {
+        const hashedPassword = await bcrypt.hash('123456', 10)
+        db.run(`UPDATE users SET password = ? WHERE username = 'demo'`, [hashedPassword])
+        saveDb()
+        console.log('已更新demo用户的密码为加密版本')
+      }
+    }
+    stmt.free()
+  } catch (e) {
+    console.log('Error checking demo user password:', e.message)
   }
 
   console.log('Database initialized')
@@ -800,12 +823,48 @@ app.post('/api/feedback', authenticateToken, (req, res) => {
 app.get('/api/feedback', authenticateToken, (req, res) => {
   try {
     // 检查用户是否为管理员
-    const currentUser = req.user
-    if (currentUser.role !== 'admin') {
+    const userId = req.user.userId
+    const stmt = db.prepare('SELECT role FROM users WHERE id = ?')
+    stmt.bind([userId])
+    const result = stmt.step()
+    const user = result ? stmt.getAsObject() : null
+    stmt.free()
+    
+    if (!user || user.role !== 'admin') {
       return res.json({ success: false, message: '权限不足' })
     }
     
-    const stmt = db.prepare('SELECT * FROM feedback ORDER BY created_at DESC')
+    const stmtFeedback = db.prepare('SELECT * FROM feedback ORDER BY created_at DESC')
+    const feedbackList = []
+    while (stmtFeedback.step()) {
+      const row = stmtFeedback.getAsObject()
+      feedbackList.push({
+        id: row.id,
+        user_id: row.user_id,
+        user_name: row.user_name,
+        title: row.title,
+        content: row.content,
+        category: row.category,
+        contact: row.contact,
+        status: row.status,
+        created_at: row.created_at
+      })
+    }
+    stmtFeedback.free()
+    
+    res.json(feedbackList)
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// 获取用户自己的意见反馈
+app.get('/api/feedback/me', authenticateToken, (req, res) => {
+  try {
+    const currentUser = req.user
+    
+    const stmt = db.prepare('SELECT * FROM feedback WHERE user_id = ? ORDER BY created_at DESC')
+    stmt.bind([currentUser.userId])
     const feedbackList = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
@@ -834,8 +893,14 @@ app.put('/api/feedback/:id', authenticateToken, (req, res) => {
   
   try {
     // 检查用户是否为管理员
-    const currentUser = req.user
-    if (currentUser.role !== 'admin') {
+    const userId = req.user.userId
+    const stmt = db.prepare('SELECT role FROM users WHERE id = ?')
+    stmt.bind([userId])
+    const result = stmt.step()
+    const user = result ? stmt.getAsObject() : null
+    stmt.free()
+    
+    if (!user || user.role !== 'admin') {
       return res.json({ success: false, message: '权限不足' })
     }
     
@@ -856,7 +921,7 @@ app.put('/api/feedback/:id', authenticateToken, (req, res) => {
 // 启动服务器
 initDb().then(() => {
   // 系统状态监控API
-  app.get('/api/status', (req, res) => {
+  app.get('/api/status', authenticateToken, requireAdmin, (req, res) => {
     const status = monitor.collectSystemStatus()
     res.json({ success: true, status })
   })

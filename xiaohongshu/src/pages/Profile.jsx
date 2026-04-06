@@ -7,6 +7,7 @@ import './Profile.css'
 export default function Profile() {
   const { user, logout, refreshUser } = useAuth()
   const [notes, setNotes] = useState([])
+  const [feedback, setFeedback] = useState([])
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     nickname: user?.nickname || '',
@@ -20,8 +21,23 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) {
-      getAllNotes().then(allNotes => {
+      // 获取用户的笔记
+      getAllNotes().then(result => {
+        const allNotes = result.notes || []
         setNotes(allNotes.filter(n => n.author_id === user.id))
+      })
+      
+      // 获取用户的意见反馈
+      fetch('/api/feedback/me', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (Array.isArray(result)) {
+          setFeedback(result)
+        }
       })
     }
   }, [user])
@@ -46,13 +62,10 @@ export default function Profile() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      // 这里可以添加图片上传逻辑，暂时使用DiceBear API
-      const randomSeed = Math.random().toString(36).substring(2, 10)
-      setFormData(prev => ({ ...prev, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}` }))
-    }
+  const handleAvatarChange = () => {
+    // 生成随机的DiceBear头像
+    const randomSeed = Math.random().toString(36).substring(2, 10)
+    setFormData(prev => ({ ...prev, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}` }))
   }
 
   const handleSubmit = async (e) => {
@@ -120,7 +133,7 @@ export default function Profile() {
               <label>头像</label>
               <div className="profile-avatar-upload">
                 <img src={formData.avatar} alt={formData.nickname} className="profile-avatar" />
-                <input type="file" accept="image/*" onChange={handleAvatarChange} />
+                <button type="button" onClick={handleAvatarChange} className="profile-avatar-btn">更换头像</button>
               </div>
             </div>
             <div className="profile-form-group">
@@ -198,6 +211,51 @@ export default function Profile() {
           <div className="profile-empty-notes">
             <p>还没有发布过笔记</p>
             <Link to="/publish" className="profile-publish-btn">发布第一篇笔记</Link>
+          </div>
+        )}
+      </div>
+
+      <div className="profile-feedback">
+        <h3>我的意见反馈 ({feedback.length})</h3>
+        {feedback.length > 0 ? (
+          <div className="profile-feedback-list">
+            {feedback.map(item => (
+              <div key={item.id} className="profile-feedback-item">
+                <div className="profile-feedback-header">
+                  <h4>{item.title}</h4>
+                  <span className={`status-badge status-${item.status}`}>
+                    {item.status === 'pending' && '待处理'}
+                    {item.status === 'processing' && '处理中'}
+                    {item.status === 'resolved' && '已解决'}
+                    {item.status === 'closed' && '已关闭'}
+                  </span>
+                </div>
+                <div className="profile-feedback-content">
+                  <p>{item.content}</p>
+                  {item.contact && (
+                    <p className="profile-feedback-contact">
+                      <strong>联系方式:</strong> {item.contact}
+                    </p>
+                  )}
+                </div>
+                <div className="profile-feedback-meta">
+                  <span className="profile-feedback-category">
+                    {item.category === 'feature' && '功能建议'}
+                    {item.category === 'bug' && 'Bug报告'}
+                    {item.category === 'ui' && '界面优化'}
+                    {item.category === 'other' && '其他'}
+                  </span>
+                  <span className="profile-feedback-time">
+                    {new Date(item.created_at).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="profile-empty-feedback">
+            <p>还没有提交过意见反馈</p>
+            <Link to="/feedback" className="profile-feedback-btn">提交意见反馈</Link>
           </div>
         )}
       </div>

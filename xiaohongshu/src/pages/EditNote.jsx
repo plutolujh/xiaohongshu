@@ -8,8 +8,6 @@ export default function EditNote() {
   const { id } = useParams()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [ingredients, setIngredients] = useState('')
-  const [steps, setSteps] = useState('')
   const [images, setImages] = useState([])
   const [error, setError] = useState('')
   const { user } = useAuth()
@@ -20,9 +18,8 @@ export default function EditNote() {
       findNoteById(id).then(note => {
         if (note && note.author_id === user.id) {
           setTitle(note.title)
-          setContent(note.content)
-          setIngredients(note.ingredients)
-          setSteps(note.steps)
+          // 将三个字段合并成一个content字段
+          setContent(`${note.content}\n\n### 食材\n${note.ingredients}\n\n### 做法\n${note.steps}`)
           setImages(note.images || [])
         } else {
           navigate('/')
@@ -118,15 +115,7 @@ export default function EditNote() {
       return
     }
     if (!content.trim()) {
-      setError('请填写美食描述')
-      return
-    }
-    if (!ingredients.trim()) {
-      setError('请填写食材')
-      return
-    }
-    if (!steps.trim()) {
-      setError('请填写做法')
+      setError('请填写内容')
       return
     }
     if (images.length === 0) {
@@ -134,12 +123,35 @@ export default function EditNote() {
       return
     }
 
+    // 解析内容，提取食材和做法
+    let parsedContent = content.trim()
+    let parsedIngredients = ''
+    let parsedSteps = ''
+    
+    // 提取食材部分
+    const ingredientsMatch = parsedContent.match(/### 食材\n([\s\S]*?)(?=### 做法|$)/)
+    if (ingredientsMatch) {
+      parsedIngredients = ingredientsMatch[1].trim()
+    }
+    
+    // 提取做法部分
+    const stepsMatch = parsedContent.match(/### 做法\n([\s\S]*)$/)
+    if (stepsMatch) {
+      parsedSteps = stepsMatch[1].trim()
+    }
+    
+    // 提取简介部分
+    const contentMatch = parsedContent.match(/^(.*?)(?=### 食材|$)/s)
+    if (contentMatch) {
+      parsedContent = contentMatch[1].trim()
+    }
+    
     const updatedNote = {
       id,
       title: title.trim(),
-      content: content.trim(),
-      ingredients: ingredients.trim(),
-      steps: steps.trim(),
+      content: parsedContent,
+      ingredients: parsedIngredients,
+      steps: parsedSteps,
       images,
       author_id: user.id,
       author_name: user.nickname,
@@ -204,32 +216,12 @@ export default function EditNote() {
           </div>
 
           <div className="publish-field">
-            <label>美食描述</label>
+            <label>内容</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="这道菜有什么特别的故事？"
-              rows={3}
-            />
-          </div>
-
-          <div className="publish-field">
-            <label>食材</label>
-            <textarea
-              value={ingredients}
-              onChange={(e) => setIngredients(e.target.value)}
-              placeholder="需要哪些食材？"
-              rows={3}
-            />
-          </div>
-
-          <div className="publish-field">
-            <label>做法</label>
-            <textarea
-              value={steps}
-              onChange={(e) => setSteps(e.target.value)}
-              placeholder="怎么做这道菜？"
-              rows={4}
+              placeholder="分享你的美食故事、食材和做法...\n\n示例：\n这道菜是我家的招牌菜，做法简单又好吃！\n\n### 食材\n• 主料：鸡蛋、西红柿\n• 调料：盐、糖、生抽\n\n### 做法\n1. 准备食材\n2. 开始烹饪\n3. 调味出锅"
+              rows={15}
             />
           </div>
 

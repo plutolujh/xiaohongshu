@@ -7,6 +7,18 @@ import './Publish.css'
 
 const templates = [
   {
+    id: 'trending',
+    name: '网红美食',
+    icon: '🔥',
+    description: '适合分享网红美食发现和打卡',
+    template: {
+      title: '发现超火的网红美食｜XXX',
+      content: '最近被疯狂种草的XXX，终于打卡了！\n\n📍 店铺：XXX\n📍 地址：XXX\n\n🔥 推荐理由：\n• 颜值超高，拍照超好看\n• 味道惊艳，名不虚传\n• 排队超火，建议早点去\n\n💰 价格：XX元\n⏰ 营业时间：XX:XX-XX:XX',
+      ingredients: '✨ 必点菜品：\n• XXX（招牌必点）\n• XXX（网红款）\n• XXX（隐藏菜单）',
+      steps: '📸 打卡攻略：\n1️⃣ 最佳拍照位置：门口/窗边/吧台\n2️⃣ 最佳打卡时间：避开饭点，人少好拍照\n3️⃣ 点餐技巧：提前查看大众点评推荐\n\n💡 小贴士：\n• 建议提前预约，避免排队\n• 高峰期可能需要等位\n• 可以错峰前往，体验更好\n\n🌟 评分：⭐⭐⭐⭐⭐\n值得打卡的网红美食！'
+    }
+  },
+  {
     id: 'home-cooking',
     name: '家常菜',
     icon: '🍳',
@@ -43,18 +55,6 @@ const templates = [
     }
   },
   {
-    id: 'trending',
-    name: '网红美食',
-    icon: '🔥',
-    description: '适合分享网红美食打卡',
-    template: {
-      title: '终于复刻了网红XXX',
-      content: '最近超火的XXX，在家也能做！\n\n📸 打卡成功\n💰 省下几十块\n😋 味道不输外面\n\n跟着做，你也能成为朋友圈美食博主！',
-      ingredients: '主料：\n• XXX 适量\n\n配料：\n• XXX 适量\n\n灵魂调料：\n• XXX（这是关键！）',
-      steps: '1️⃣ 准备工作\n准备好所有材料\n\n2️⃣ 制作过程\n按照步骤一步步来\n\n3️⃣ 关键步骤\n这一步很重要，决定了成败\n\n4️⃣ 完成\n摆盘拍照发朋友圈！\n\n💡 小贴士：\n• 灵魂调料不能少\n• 摆盘也很重要哦'
-    }
-  },
-  {
     id: 'cafe',
     name: '咖啡店打卡',
     icon: '☕',
@@ -71,8 +71,6 @@ const templates = [
 export default function Publish() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [ingredients, setIngredients] = useState('')
-  const [steps, setSteps] = useState('')
   const [images, setImages] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -85,14 +83,10 @@ export default function Publish() {
       setSelectedTemplate(null)
       setTitle('')
       setContent('')
-      setIngredients('')
-      setSteps('')
     } else {
       setSelectedTemplate(template.id)
       setTitle(template.template.title)
-      setContent(template.template.content)
-      setIngredients(template.template.ingredients)
-      setSteps(template.template.steps)
+      setContent(`${template.template.content}\n\n### 食材\n${template.template.ingredients}\n\n### 做法\n${template.template.steps}`)
     }
   }
 
@@ -203,15 +197,7 @@ export default function Publish() {
       return
     }
     if (!content.trim()) {
-      setError('请填写美食描述')
-      return
-    }
-    if (!ingredients.trim()) {
-      setError('请填写食材')
-      return
-    }
-    if (!steps.trim()) {
-      setError('请填写做法')
+      setError('请填写内容')
       return
     }
     if (images.length === 0) {
@@ -219,12 +205,35 @@ export default function Publish() {
       return
     }
 
+    // 解析内容，提取食材和做法
+    let parsedContent = content.trim()
+    let parsedIngredients = ''
+    let parsedSteps = ''
+    
+    // 提取食材部分
+    const ingredientsMatch = parsedContent.match(/### 食材\n([\s\S]*?)(?=### 做法|$)/)
+    if (ingredientsMatch) {
+      parsedIngredients = ingredientsMatch[1].trim()
+    }
+    
+    // 提取做法部分
+    const stepsMatch = parsedContent.match(/### 做法\n([\s\S]*)$/)
+    if (stepsMatch) {
+      parsedSteps = stepsMatch[1].trim()
+    }
+    
+    // 提取简介部分
+    const contentMatch = parsedContent.match(/^(.*?)(?=### 食材|$)/s)
+    if (contentMatch) {
+      parsedContent = contentMatch[1].trim()
+    }
+    
     const newNote = {
       id: Date.now().toString(),
       title: title.trim(),
-      content: content.trim(),
-      ingredients: ingredients.trim(),
-      steps: steps.trim(),
+      content: parsedContent,
+      ingredients: parsedIngredients,
+      steps: parsedSteps,
       images,
       author_id: user.id,
       author_name: user.nickname,
@@ -319,32 +328,12 @@ export default function Publish() {
           </div>
 
           <div className="publish-field">
-            <label>美食描述</label>
+            <label>内容</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="这道菜有什么特别的故事？"
-              rows={5}
-            />
-          </div>
-
-          <div className="publish-field">
-            <label>食材</label>
-            <textarea
-              value={ingredients}
-              onChange={(e) => setIngredients(e.target.value)}
-              placeholder="需要哪些食材？"
-              rows={4}
-            />
-          </div>
-
-          <div className="publish-field">
-            <label>做法</label>
-            <textarea
-              value={steps}
-              onChange={(e) => setSteps(e.target.value)}
-              placeholder="怎么做这道菜？"
-              rows={6}
+              placeholder="分享你的美食故事、食材和做法...\n\n示例：\n这道菜是我家的招牌菜，做法简单又好吃！\n\n### 食材\n• 主料：鸡蛋、西红柿\n• 调料：盐、糖、生抽\n\n### 做法\n1. 准备食材\n2. 开始烹饪\n3. 调味出锅"
+              rows={15}
             />
           </div>
 
