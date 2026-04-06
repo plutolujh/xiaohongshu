@@ -215,6 +215,7 @@ const SystemStatus = () => {
           <h3>服务器信息</h3>
           <p>运行时间: {Math.round(status?.server?.uptime || 0)} 秒</p>
           <p>Node版本: {status?.server?.nodeVersion || '未知'}</p>
+          <p>项目版本: {status?.version || '1.0.0'}</p>
         </div>
         
         <div className="status-card">

@@ -42,6 +42,7 @@ export default function Navbar() {
                   <Link to="/user-management" className="navbar-link">用户管理</Link>
                   <Link to="/note-management" className="navbar-link">笔记管理</Link>
                   <Link to="/feedback-management" className="navbar-link">意见管理</Link>
+                  <Link to="/database-management" className="navbar-link">数据库管理</Link>
                 </>
               )}
               <button onClick={handleLogout} className="navbar-link navbar-logout">
@@ -80,6 +81,7 @@ export default function Navbar() {
                   <Link to="/user-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>用户管理</Link>
                   <Link to="/note-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>笔记管理</Link>
                   <Link to="/feedback-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>意见管理</Link>
+                  <Link to="/database-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>数据库管理</Link>
                 </>
               )}
               <button onClick={() => {

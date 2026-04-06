@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
+import Footer from './components/Footer'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -13,6 +14,7 @@ import UserManagement from './pages/UserManagement'
 import NoteManagement from './pages/NoteManagement'
 import Feedback from './pages/Feedback'
 import FeedbackManagement from './pages/FeedbackManagement'
+import DatabaseManagement from './pages/DatabaseManagement'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 
@@ -90,7 +92,16 @@ export default function App() {
             </AdminRoute>
           }
         />
+        <Route
+          path="/database-management"
+          element={
+            <AdminRoute>
+              <DatabaseManagement />
+            </AdminRoute>
+          }
+        />
       </Routes>
+      <Footer />
     </div>
   )
 }

@@ -1,0 +1,251 @@
+.database-management {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.database-header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.database-header h1 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.database-header p {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.database-info {
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-top: 10px;
+  border-left: 3px solid #007bff;
+}
+
+.database-info strong {
+  color: #333;
+  margin-right: 5px;
+}
+
+.database-info {
+  word-break: break-all;
+}
+
+.database-error {
+  background-color: #fee;
+  border: 1px solid #fcc;
+  color: #c00;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+}
+
+.database-content {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 20px;
+}
+
+.tables-list {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.tables-list h2 {
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.tables-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tables-list li {
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tables-list li:hover {
+  background-color: #e8e8e8;
+}
+
+.tables-list li.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.table-data {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  grid-column: 1 / -1;
+}
+
+.table-data h2 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.table-info {
+  margin-bottom: 30px;
+}
+
+.table-info h3,
+.table-rows h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #666;
+}
+
+.structure-table,
+.data-table,
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.structure-table th,
+.structure-table td,
+.data-table th,
+.data-table td,
+.result-table th,
+.result-table td {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  text-align: left;
+  font-size: 14px;
+}
+
+.structure-table th,
+.data-table th,
+.result-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+}
+
+.structure-table tr:nth-child(even),
+.data-table tr:nth-child(even),
+.result-table tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.empty-data {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.sql-query {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  grid-column: 1 / -1;
+  margin-top: 20px;
+}
+
+.sql-query h2 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.query-input {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.query-input textarea {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.execute-btn {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  align-self: flex-start;
+  transition: background-color 0.2s;
+}
+
+.execute-btn:hover {
+  background-color: #0069d9;
+}
+
+.execute-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.query-result {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.query-result h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #666;
+}
+
+.affected-rows {
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .database-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .query-input {
+    flex-direction: column;
+  }
+  
+  .execute-btn {
+    align-self: stretch;
+  }
+}

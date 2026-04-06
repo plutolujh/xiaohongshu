@@ -26,7 +26,7 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
 })()
 
 const app = express()
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3002
 
 // JWT验证中间件
 function authenticateToken(req, res, next) {
@@ -77,7 +77,8 @@ function validateRequest(req, res, next) {
     '/notes', '/notes/:id',
     '/comments', '/comments/:noteId', '/comments/:id',
     '/feedback', '/feedback/:id',
-    '/status'
+    '/status',
+    '/db/info', '/db/tables', '/db/table/:tableName', '/db/query'
   ]
   
   let pathValid = false
@@ -956,7 +957,80 @@ initDb().then(() => {
   // 系统状态监控API
   app.get('/api/status', authenticateToken, requireAdmin, (req, res) => {
     const status = monitor.collectSystemStatus()
+    // 添加版本信息和最后发布时间
+    status.version = '1.0.0'
+    status.lastPublishTime = '2026-04-06 11:00:00'
     res.json({ success: true, status })
+  })
+  
+  // 数据库管理API
+  app.get('/api/db/info', authenticateToken, requireAdmin, (req, res) => {
+    try {
+      res.json({ success: true, dbPath: DB_PATH })
+    } catch (e) {
+      res.json({ success: false, message: e.message })
+    }
+  })
+  
+  app.get('/api/db/tables', authenticateToken, requireAdmin, (req, res) => {
+    try {
+      const result = db.exec('SELECT name FROM sqlite_master WHERE type="table"')
+      const tables = result[0]?.values.map(row => row[0]) || []
+      res.json({ success: true, tables })
+    } catch (e) {
+      res.json({ success: false, message: e.message })
+    }
+  })
+  
+  app.get('/api/db/table/:tableName', authenticateToken, requireAdmin, (req, res) => {
+    try {
+      const tableName = req.params.tableName
+      const columns = db.exec(`PRAGMA table_info(${tableName})`)
+      const columnInfo = columns[0]?.values.map(row => ({
+        cid: row[0],
+        name: row[1],
+        type: row[2],
+        notnull: row[3],
+        dflt_value: row[4],
+        pk: row[5]
+      })) || []
+      
+      const data = db.exec(`SELECT * FROM ${tableName}`)
+      const rows = data[0]?.values || []
+      
+      res.json({ success: true, columns: columnInfo, rows })
+    } catch (e) {
+      res.json({ success: false, message: e.message })
+    }
+  })
+  
+  app.post('/api/db/query', authenticateToken, requireAdmin, (req, res) => {
+    try {
+      const { sql } = req.body
+      if (!sql) {
+        return res.json({ success: false, message: 'SQL语句不能为空' })
+      }
+      
+      const result = db.exec(sql)
+      if (result.length === 0) {
+        // 对于INSERT、UPDATE、DELETE等操作
+        res.json({ success: true, affectedRows: db.getRowsModified() })
+      } else {
+        // 对于SELECT操作
+        const columns = result[0]?.columns || []
+        const rows = result[0]?.values || []
+        res.json({ success: true, columns, rows })
+      }
+      
+      // 如果是修改操作，保存数据库
+      if (sql.trim().toUpperCase().startsWith('INSERT') || 
+          sql.trim().toUpperCase().startsWith('UPDATE') || 
+          sql.trim().toUpperCase().startsWith('DELETE')) {
+        saveDb()
+      }
+    } catch (e) {
+      res.json({ success: false, message: e.message })
+    }
   })
 
   // 生产环境下处理前端路由
