@@ -75,6 +75,7 @@ export default function Publish() {
   const [steps, setSteps] = useState('')
   const [images, setImages] = useState([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -194,6 +195,8 @@ export default function Publish() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    
+    if (loading) return // 防止重复提交
 
     if (!title.trim()) {
       setError('请填写标题')
@@ -230,8 +233,16 @@ export default function Publish() {
       created_at: new Date().toISOString()
     }
 
-    await createNote(newNote)
-    navigate('/')
+    setLoading(true)
+    try {
+      await createNote(newNote)
+      navigate('/')
+    } catch (error) {
+      console.error('发布笔记失败:', error)
+      setError('发布失败，请稍后重试')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -337,8 +348,8 @@ export default function Publish() {
             />
           </div>
 
-          <button type="submit" className="publish-button">
-            发布笔记
+          <button type="submit" className="publish-button" disabled={loading}>
+            {loading ? '发布中...' : '发布笔记'}
           </button>
         </form>
       </div>
