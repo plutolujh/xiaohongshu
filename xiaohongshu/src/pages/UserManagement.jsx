@@ -19,7 +19,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch('http://localhost:3001/api/users', {
+      const response = await fetch('/api/users', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -42,7 +42,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`http://localhost:3001/api/users/${userId}`, {
+      const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -68,7 +68,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`http://localhost:3001/api/users/${editingUser.id}`, {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`http://localhost:3001/api/users/${userId}/status`, {
+      const response = await fetch(`/api/users/${userId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -121,7 +121,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`http://localhost:3001/api/users/${userId}/role`, {
+      const response = await fetch(`/api/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -7,5 +7,12 @@ export default defineConfig({
     port: 3000,
     host: true,
     allowedHosts: true, // 允许所有主机，更灵活的配置
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   },
 });

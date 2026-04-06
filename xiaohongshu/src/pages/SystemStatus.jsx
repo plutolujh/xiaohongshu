@@ -38,7 +38,7 @@ const SystemStatus = () => {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/status')
+        const response = await fetch('/api/status')
         const data = await response.json()
         if (data.success) {
           setStatus(data.status)
