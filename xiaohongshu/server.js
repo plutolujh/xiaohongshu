@@ -161,7 +161,8 @@ app.use((err, req, res, next) => {
 })
 
 let db = null
-const DB_PATH = join(dirname(fileURLToPath(import.meta.url)), 'xiaohongshu.db')
+// 支持环境变量配置数据库路径，解决render.com文件系统临时性问题
+const DB_PATH = process.env.DB_PATH || join(dirname(fileURLToPath(import.meta.url)), 'xiaohongshu.db')
 
 // 初始化数据库
 async function initDb() {

@@ -4,22 +4,28 @@ services:
     env: node
     region: singapore
     plan: free
-    rootDir: xiaohongshu
+    rootDir: .
     buildCommand: npm install && npm run build
     startCommand: npm start
     buildFilter:
       paths:
-        - xiaohongshu/package.json
-        - xiaohongshu/package-lock.json
-        - xiaohongshu/src/**/*
-        - xiaohongshu/server.js
-        - xiaohongshu/vite.config.js
+        - package.json
+        - package-lock.json
+        - src/**/*
+        - server.js
+        - vite.config.js
       ignoredPaths:
-        - xiaohongshu/.gitignore
-        - xiaohongshu/README.md
-        - xiaohongshu/CHANGELOG.md
+        - .gitignore
+        - README.md
+        - CHANGELOG.md
     envVars:
       - key: NODE_ENV
         value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: PORT
+        value: "3001"
+      - key: FRONTEND_URL
+        value: "https://xiaohongshu-1k78.onrender.com"
+      - key: DB_PATH
+        value: "./xiaohongshu.db"

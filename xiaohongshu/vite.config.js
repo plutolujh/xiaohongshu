@@ -6,6 +6,6 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    allowedHosts: ["xiaohongshu-1k78.onrender.com"],
+    allowedHosts: true, // 允许所有主机，更灵活的配置
   },
 });
