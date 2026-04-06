@@ -183,6 +183,12 @@ const DB_PATH = process.env.DB_PATH || join(dirname(fileURLToPath(import.meta.ur
 async function initDb() {
   const SQL = await initSqlJs()
 
+  // 确保数据库目录存在
+  const dbDir = dirname(DB_PATH)
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true })
+  }
+
   // 尝试加载已存在的数据库
   if (fs.existsSync(DB_PATH)) {
     const buffer = fs.readFileSync(DB_PATH)

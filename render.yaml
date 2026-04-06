@@ -28,4 +28,7 @@ services:
       - key: FRONTEND_URL
         value: "https://xiaohongshu-1k78.onrender.com"
       - key: DB_PATH
-        value: "./xiaohongshu.db"
+        value: "/var/data/xiaohongshu.db"
+    volumes:
+      - name: data
+        path: /var/data
