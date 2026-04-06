@@ -337,13 +337,28 @@ async function initDb() {
     const adminPassword = await bcrypt.hash('123456', 10)
     db.run(`INSERT INTO users (id, username, password, nickname, avatar, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       ['admin', 'lujh', adminPassword, '管理员', 'https://api.dicebear.com/7.x/avataaars/svg?seed=lujh', 'admin', '2024-01-01T00:00:00Z'])
-
+  }
+  
+  // 检查是否需要添加示例笔记
+  const noteCount = db.exec('SELECT COUNT(*) FROM notes')[0]?.values[0][0] || 0
+  if (noteCount === 0) {
+    // 确保demo用户存在
+    let demoUserId = 'demo'
+    const demoStmt = db.prepare('SELECT id FROM users WHERE username = ?')
+    demoStmt.bind(['demo'])
+    const demoResult = demoStmt.step()
+    if (demoResult) {
+      const demoUser = demoStmt.getAsObject()
+      demoUserId = demoUser.id
+    }
+    demoStmt.free()
+    
     // 添加示例笔记
     const notes = [
-      ['1', '超级美味的番茄炒蛋', '这道番茄炒蛋是家常必备，简单易学又好吃！', '番茄2个、鸡蛋3个、盐适量、糖少许、葱花适量', '1. 番茄切块，鸡蛋打散\n2. 炒鸡蛋至半熟盛出\n3. 炒番茄出汁\n4. 加入鸡蛋一起翻炒\n5. 出锅前撒上葱花', '["https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400"]', 'demo', '美食达人', 128, 0, '2024-01-15T10:30:00Z'],
-      ['2', '香喷喷的红烧肉', '肥而不腻入口即化的红烧肉，太香了！', '五花肉500g、生抽2勺、老抽1勺、糖2勺、料酒1勺', '1. 五花肉切块焯水\n2. 炒糖色\n3. 加入肉块翻炒\n4. 加调料和水慢炖1小时', '["https://images.unsplash.com/photo-1623689046286-d4ca3f6b2f52?w=400"]', 'demo', '美食达人', 256, 0, '2024-01-14T15:20:00Z'],
-      ['3', '清爽凉拌黄瓜', '夏天必吃的清爽小菜，简单又开胃', '黄瓜2根、蒜末、醋、酱油、香油、辣椒油', '1. 黄瓜拍碎切块\n2. 加入蒜末和调料\n3. 拌匀即可', '["https://images.unsplash.com/photo-1580442151529-343f2f6e0e27?w=400"]', 'demo', '美食达人', 89, 0, '2024-01-13T09:00:00Z'],
-      ['4', '美味披萨在家做', '自己动手做披萨，成就感满满！', '面粉200g、酵母3g、番茄酱、芝士、各种喜欢的配菜', '1. 和面发酵\n2. 擀成饼底\n3. 抹上番茄酱\n4. 铺上芝士和配菜\n5. 烤箱200度烤15分钟', '["https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400"]', 'demo', '美食达人', 312, 0, '2024-01-11T12:00:00Z']
+      ['1', '超级美味的番茄炒蛋', '这道番茄炒蛋是家常必备，简单易学又好吃！', '番茄2个、鸡蛋3个、盐适量、糖少许、葱花适量', '1. 番茄切块，鸡蛋打散\n2. 炒鸡蛋至半熟盛出\n3. 炒番茄出汁\n4. 加入鸡蛋一起翻炒\n5. 出锅前撒上葱花', '["https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400"]', demoUserId, '美食达人', 128, 0, '2024-01-15T10:30:00Z'],
+      ['2', '香喷喷的红烧肉', '肥而不腻入口即化的红烧肉，太香了！', '五花肉500g、生抽2勺、老抽1勺、糖2勺、料酒1勺', '1. 五花肉切块焯水\n2. 炒糖色\n3. 加入肉块翻炒\n4. 加调料和水慢炖1小时', '["https://images.pexels.com/photos/1438672/pexels-photo-1438672.jpeg?auto=compress&cs=tinysrgb&w=400"]', demoUserId, '美食达人', 256, 0, '2024-01-14T15:20:00Z'],
+      ['3', '清爽凉拌黄瓜', '夏天必吃的清爽小菜，简单又开胃', '黄瓜2根、蒜末、醋、酱油、香油、辣椒油', '1. 黄瓜拍碎切块\n2. 加入蒜末和调料\n3. 拌匀即可', '["https://images.unsplash.com/photo-1580442151529-343f2f6e0e27?w=400"]', demoUserId, '美食达人', 89, 0, '2024-01-13T09:00:00Z'],
+      ['4', '美味披萨在家做', '自己动手做披萨，成就感满满！', '面粉200g、酵母3g、番茄酱、芝士、各种喜欢的配菜', '1. 和面发酵\n2. 擀成饼底\n3. 抹上番茄酱\n4. 铺上芝士和配菜\n5. 烤箱200度烤15分钟', '["https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400"]', demoUserId, '美食达人', 312, 0, '2024-01-11T12:00:00Z']
     ]
 
     notes.forEach(note => {
