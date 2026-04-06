@@ -20,25 +20,35 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const existingUser = await findUserByUsername(username)
-      if (existingUser) {
-        return { success: false, message: '用户名已存在' }
+      // 调用后端注册API
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, nickname })
+      })
+      const result = await response.json()
+      
+      if (result.success) {
+        // 注册成功后自动登录
+        const loginResponse = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        })
+        const loginResult = await loginResponse.json()
+        
+        if (loginResult.success) {
+          const user = loginResult.user
+          const token = loginResult.token
+          setCurrentUser({ ...user, token })
+          setUser({ ...user, token })
+          return { success: true }
+        } else {
+          return { success: false, message: '注册成功，但自动登录失败' }
+        }
+      } else {
+        return { success: false, message: result.message }
       }
-
-      const newUser = {
-        id: Date.now().toString(),
-        username,
-        password,
-        nickname,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-        created_at: new Date().toISOString()
-      }
-
-      await createUser(newUser)
-      setCurrentUser(newUser)
-      setUser(newUser)
-
-      return { success: true }
     } catch (error) {
       console.error('Register error:', error)
       return { success: false, message: '注册失败，请重试' }

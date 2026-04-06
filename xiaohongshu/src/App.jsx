@@ -10,6 +10,9 @@ import EditNote from './pages/EditNote'
 import Changelog from './pages/Changelog'
 import SystemStatus from './pages/SystemStatus'
 import UserManagement from './pages/UserManagement'
+import NoteManagement from './pages/NoteManagement'
+import Feedback from './pages/Feedback'
+import FeedbackManagement from './pages/FeedbackManagement'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 
@@ -48,6 +51,14 @@ export default function App() {
           }
         />
         <Route
+          path="/feedback"
+          element={
+            <ProtectedRoute>
+              <Feedback />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/system-status"
           element={
             <ProtectedRoute>
@@ -60,6 +71,22 @@ export default function App() {
           element={
             <AdminRoute>
               <UserManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/note-management"
+          element={
+            <AdminRoute>
+              <NoteManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/feedback-management"
+          element={
+            <AdminRoute>
+              <FeedbackManagement />
             </AdminRoute>
           }
         />

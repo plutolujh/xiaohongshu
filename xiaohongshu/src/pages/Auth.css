@@ -108,3 +108,54 @@
 .auth-footer a:hover {
   text-decoration: underline;
 }
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .auth-page {
+    padding: 70px 16px 30px;
+  }
+  
+  .auth-card {
+    padding: 32px 24px;
+  }
+  
+  .auth-card h2 {
+    font-size: 20px;
+  }
+  
+  .auth-subtitle {
+    margin-bottom: 24px;
+  }
+  
+  .auth-form {
+    gap: 16px;
+  }
+  
+  .auth-field input {
+    height: 40px;
+  }
+  
+  .auth-button {
+    height: 40px;
+    font-size: 14px;
+  }
+  
+  .auth-footer {
+    margin-top: 20px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 24px 20px;
+  }
+  
+  .auth-card h2 {
+    font-size: 18px;
+  }
+  
+  .auth-subtitle {
+    font-size: 13px;
+  }
+}

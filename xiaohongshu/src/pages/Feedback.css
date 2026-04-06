@@ -1,0 +1,208 @@
+.feedback-container {
+  min-height: 100vh;
+  background: #f8f8f8;
+  padding: 80px 20px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feedback-card {
+  width: 100%;
+  max-width: 600px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.feedback-card h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.feedback-subtitle {
+  font-size: 14px;
+  color: #999;
+  margin: 0 0 32px;
+  text-align: center;
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feedback-field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.feedback-field input,
+.feedback-field select,
+.feedback-field textarea {
+  padding: 12px 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.feedback-field input:focus,
+.feedback-field select:focus,
+.feedback-field textarea:focus {
+  border-color: #ff2442;
+}
+
+.feedback-field input::placeholder,
+.feedback-field textarea::placeholder {
+  color: #bbb;
+}
+
+.feedback-field textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.feedback-button {
+  height: 44px;
+  background: #ff2442;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 8px;
+}
+
+.feedback-button:hover:not(:disabled) {
+  background: #e62039;
+}
+
+.feedback-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.feedback-error {
+  padding: 12px 16px;
+  background: #fff0f0;
+  border: 1px solid #ffcccc;
+  border-radius: 8px;
+  color: #ff2442;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.feedback-success {
+  padding: 12px 16px;
+  background: #f0fff0;
+  border: 1px solid #ccffcc;
+  border-radius: 8px;
+  color: #24ff24;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.feedback-tips {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.feedback-tips h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px;
+}
+
+.feedback-tips ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.feedback-tips li {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.feedback-tips li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #ff2442;
+  font-weight: bold;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .feedback-container {
+    padding: 70px 16px 30px;
+  }
+  
+  .feedback-card {
+    padding: 32px 24px;
+  }
+  
+  .feedback-card h2 {
+    font-size: 20px;
+  }
+  
+  .feedback-subtitle {
+    margin-bottom: 24px;
+  }
+  
+  .feedback-form {
+    gap: 16px;
+  }
+  
+  .feedback-field input,
+  .feedback-field select,
+  .feedback-field textarea {
+    padding: 10px 14px;
+  }
+  
+  .feedback-button {
+    height: 40px;
+    font-size: 14px;
+  }
+  
+  .feedback-tips {
+    margin-top: 24px;
+    padding-top: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .feedback-card {
+    padding: 24px 20px;
+  }
+  
+  .feedback-card h2 {
+    font-size: 18px;
+  }
+  
+  .feedback-subtitle {
+    font-size: 13px;
+  }
+}

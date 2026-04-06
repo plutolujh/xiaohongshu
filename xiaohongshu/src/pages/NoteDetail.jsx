@@ -10,6 +10,7 @@ export default function NoteDetail() {
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [replyToComment, setReplyToComment] = useState(null)
+  const [selectedImage, setSelectedImage] = useState(null)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -107,13 +108,23 @@ export default function NoteDetail() {
         <div className="note-detail-images">
           {images.length === 1 ? (
             <div className="note-detail-image">
-              <img src={images[0]} alt={note.title} />
+              <img 
+                src={images[0]} 
+                alt={note.title} 
+                onClick={() => setSelectedImage(images[0])}
+                className="clickable-image"
+              />
             </div>
           ) : images.length > 1 ? (
             <div className="note-detail-image-grid">
               {images.slice(0, 9).map((img, index) => (
                 <div key={index} className="note-detail-image-item">
-                  <img src={img} alt={`${note.title}-${index + 1}`} />
+                  <img 
+                    src={img} 
+                    alt={`${note.title}-${index + 1}`} 
+                    onClick={() => setSelectedImage(img)}
+                    className="clickable-image"
+                  />
                 </div>
               ))}
             </div>
@@ -233,6 +244,16 @@ export default function NoteDetail() {
           </div>
         </div>
       </div>
+
+      {/* 图片预览模态框 */}
+      {selectedImage && (
+        <div className="image-modal" onClick={() => setSelectedImage(null)}>
+          <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="image-modal-close" onClick={() => setSelectedImage(null)}>×</button>
+            <img src={selectedImage} alt="预览" className="image-modal-img" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

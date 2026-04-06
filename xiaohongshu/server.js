@@ -6,13 +6,24 @@ import jwt from 'jsonwebtoken'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import fs from 'fs'
+import crypto from 'crypto'
 import logger from './src/utils/logger.js'
 import monitor from './src/utils/monitor.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production'
+// JWT密钥安全配置
+const generateSecretKey = () => {
+  return crypto.randomBytes(64).toString('hex')
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('警告: 生产环境未设置JWT_SECRET环境变量，使用临时密钥')
+  }
+  return generateSecretKey()
+})()
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -62,9 +73,10 @@ function validateRequest(req, res, next) {
   
   // 验证请求路径
   const validPaths = [
-    '/users', '/users/:username', '/login',
+    '/users', '/users/:username', '/users/:id', '/users/:id/password', '/users/:id/status', '/users/:id/role', '/login', '/register',
     '/notes', '/notes/:id',
     '/comments', '/comments/:noteId', '/comments/:id',
+    '/feedback', '/feedback/:id',
     '/status'
   ]
   
@@ -184,13 +196,14 @@ async function initDb() {
       password TEXT NOT NULL,
       nickname TEXT NOT NULL,
       avatar TEXT,
+      bio TEXT,
       role TEXT DEFAULT 'user',
       status TEXT DEFAULT 'active',
       created_at TEXT
     )
   `)
 
-  // 检查并添加role和status字段（用于已存在的数据库）
+  // 检查并添加字段（用于已存在的数据库）
   try {
     const columns = db.exec("PRAGMA table_info(users)")
     const columnNames = columns[0].values.map(col => col[1])
@@ -201,6 +214,10 @@ async function initDb() {
     
     if (!columnNames.includes('status')) {
       db.run(`ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'`)
+    }
+    
+    if (!columnNames.includes('bio')) {
+      db.run(`ALTER TABLE users ADD COLUMN bio TEXT`)
     }
   } catch (e) {
     console.log('Error adding columns:', e.message)
@@ -276,6 +293,22 @@ async function initDb() {
     console.log('Error adding reply columns:', e.message)
   }
 
+  // 初始化意见反馈表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS feedback (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      user_name TEXT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      category TEXT NOT NULL,
+      contact TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `)
+
   // 初始化样板数据
   const userCount = db.exec('SELECT COUNT(*) FROM users')[0]?.values[0][0] || 0
   if (userCount === 0) {
@@ -320,9 +353,10 @@ app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
     username: row[1], 
     nickname: row[3], 
     avatar: row[4], 
-    role: row[5] || 'user',
-    status: row[6] || 'active',
-    created_at: row[7] || row[5]
+    bio: row[5],
+    role: row[6] || 'user',
+    status: row[7] || 'active',
+    created_at: row[8] || row[5]
   }))
   res.json(users)
 })
@@ -343,10 +377,58 @@ app.post('/api/users', async (req, res) => {
 })
 
 app.put('/api/users/:id', authenticateToken, (req, res) => {
-  const { nickname, avatar } = req.body
+  const { nickname, avatar, bio } = req.body
+  
+  // 输入验证
+  if (!nickname || nickname.trim().length === 0) {
+    return res.json({ success: false, message: '昵称不能为空' })
+  }
+  if (nickname.length > 30) {
+    return res.json({ success: false, message: '昵称长度不能超过30个字符' })
+  }
+  if (bio && bio.length > 200) {
+    return res.json({ success: false, message: '个性签名长度不能超过200个字符' })
+  }
+  
   try {
-    db.run(`UPDATE users SET nickname = ?, avatar = ? WHERE id = ?`,
-      [nickname, avatar, req.params.id])
+    db.run(`UPDATE users SET nickname = ?, avatar = ?, bio = ? WHERE id = ?`,
+      [nickname.trim(), avatar, bio ? bio.trim() : '', req.params.id])
+    saveDb()
+    res.json({ success: true })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// 修改密码API
+app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
+  const { oldPassword, newPassword } = req.body
+  try {
+    // 验证旧密码
+    const stmt = db.prepare('SELECT password FROM users WHERE id = ?')
+    stmt.bind([req.params.id])
+    const result = stmt.step()
+    const user = result ? stmt.getAsObject() : null
+    stmt.free()
+    
+    if (!user) {
+      return res.json({ success: false, message: '用户不存在' })
+    }
+    
+    const passwordMatch = await bcrypt.compare(oldPassword, user.password)
+    if (!passwordMatch) {
+      return res.json({ success: false, message: '旧密码错误' })
+    }
+    
+    // 验证新密码长度
+    if (newPassword.length < 6) {
+      return res.json({ success: false, message: '密码长度至少6位' })
+    }
+    
+    // 更新密码
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    db.run(`UPDATE users SET password = ? WHERE id = ?`,
+      [hashedPassword, req.params.id])
     saveDb()
     res.json({ success: true })
   } catch (e) {
@@ -459,6 +541,62 @@ app.post('/api/login', async (req, res) => {
   }
 })
 
+// 注册API
+app.post('/api/register', async (req, res) => {
+  const { username, password, nickname } = req.body
+  
+  // 输入验证
+  if (!username || !password || !nickname) {
+    return res.json({ success: false, message: '请填写所有字段' })
+  }
+  
+  if (username.length < 3 || username.length > 20) {
+    return res.json({ success: false, message: '用户名长度必须在3-20个字符之间' })
+  }
+  
+  if (password.length < 6) {
+    return res.json({ success: false, message: '密码长度至少6位' })
+  }
+  
+  if (nickname.length < 2 || nickname.length > 30) {
+    return res.json({ success: false, message: '昵称长度必须在2-30个字符之间' })
+  }
+  
+  try {
+    // 检查用户名是否已存在
+    const stmt = db.prepare('SELECT id FROM users WHERE username = ?')
+    stmt.bind([username])
+    const existingUser = stmt.step()
+    stmt.free()
+    
+    if (existingUser) {
+      return res.json({ success: false, message: '用户名已存在' })
+    }
+    
+    // 加密密码
+    const hashedPassword = await bcrypt.hash(password, 10)
+    
+    // 创建用户
+    const id = Date.now().toString()
+    const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+    const role = 'user'
+    const status = 'active'
+    const created_at = new Date().toISOString()
+    
+    db.run(`INSERT INTO users (id, username, password, nickname, avatar, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, username, hashedPassword, nickname, avatar, role, status, created_at])
+    saveDb()
+    
+    // 返回用户信息（不包含密码）
+    res.json({ 
+      success: true, 
+      user: { id, username, nickname, avatar, role, status, created_at }
+    })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
 // 笔记API
 app.get('/api/notes', (req, res) => {
   const page = parseInt(req.query.page) || 1
@@ -484,9 +622,30 @@ app.get('/api/notes', (req, res) => {
 
 app.post('/api/notes', authenticateToken, (req, res) => {
   const { id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at } = req.body
+  
+  // 输入验证
+  if (!title || title.trim().length === 0) {
+    return res.json({ success: false, message: '标题不能为空' })
+  }
+  if (title.length > 100) {
+    return res.json({ success: false, message: '标题长度不能超过100个字符' })
+  }
+  if (!content || content.trim().length === 0) {
+    return res.json({ success: false, message: '内容不能为空' })
+  }
+  if (content.length > 5000) {
+    return res.json({ success: false, message: '内容长度不能超过5000个字符' })
+  }
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    return res.json({ success: false, message: '至少需要上传一张图片' })
+  }
+  if (images.length > 9) {
+    return res.json({ success: false, message: '最多上传9张图片' })
+  }
+  
   try {
     db.run(`INSERT INTO notes (id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, title, content, ingredients, steps, JSON.stringify(images), author_id, author_name, likes, liked ? 1 : 0, created_at])
+      [id, title.trim(), content.trim(), ingredients, steps, JSON.stringify(images), author_id, author_name, likes || 0, liked ? 1 : 0, created_at])
     saveDb()
     res.json({ success: true })
   } catch (e) {
@@ -496,9 +655,27 @@ app.post('/api/notes', authenticateToken, (req, res) => {
 
 app.put('/api/notes/:id', authenticateToken, (req, res) => {
   const { title, content, ingredients, steps, images, likes, liked } = req.body
+  
+  // 输入验证
+  if (!title || title.trim().length === 0) {
+    return res.json({ success: false, message: '标题不能为空' })
+  }
+  if (title.length > 100) {
+    return res.json({ success: false, message: '标题长度不能超过100个字符' })
+  }
+  if (!content || content.trim().length === 0) {
+    return res.json({ success: false, message: '内容不能为空' })
+  }
+  if (content.length > 5000) {
+    return res.json({ success: false, message: '内容长度不能超过5000个字符' })
+  }
+  if (images && images.length > 9) {
+    return res.json({ success: false, message: '最多上传9张图片' })
+  }
+  
   try {
     db.run(`UPDATE notes SET title = ?, content = ?, ingredients = ?, steps = ?, images = ?, likes = ?, liked = ? WHERE id = ?`,
-      [title, content, ingredients, steps, JSON.stringify(images), likes, liked ? 1 : 0, req.params.id])
+      [title.trim(), content.trim(), ingredients, steps, JSON.stringify(images), likes, liked ? 1 : 0, req.params.id])
     saveDb()
     res.json({ success: true })
   } catch (e) {
@@ -531,29 +708,41 @@ app.get('/api/notes/:id', (req, res) => {
 
 // 评论API
 app.get('/api/comments/:noteId', (req, res) => {
-  const result = db.exec(`SELECT * FROM comments WHERE note_id = '${req.params.noteId}' ORDER BY created_at DESC`)
-  if (result.length === 0) return res.json([])
-  
-  const comments = result[0].values.map(row => ({
-    id: row[0],
-    note_id: row[1],
-    user_id: row[2],
-    user_name: row[3],
-    content: row[4],
-    reply_to_id: row[5] || null,
-    reply_to_user_name: row[6] || null,
-    reply_to_content: row[7] || null,
-    created_at: row[8] || row[5]
-  }))
-  
+  const stmt = db.prepare('SELECT * FROM comments WHERE note_id = ? ORDER BY created_at DESC')
+  stmt.bind([req.params.noteId])
+  const comments = []
+  while (stmt.step()) {
+    const row = stmt.getAsObject()
+    comments.push({
+      id: row.id,
+      note_id: row.note_id,
+      user_id: row.user_id,
+      user_name: row.user_name,
+      content: row.content,
+      reply_to_id: row.reply_to_id || null,
+      reply_to_user_name: row.reply_to_user_name || null,
+      reply_to_content: row.reply_to_content || null,
+      created_at: row.created_at
+    })
+  }
+  stmt.free()
   res.json(comments)
 })
 
 app.post('/api/comments', authenticateToken, (req, res) => {
   const { id, note_id, user_id, user_name, content, reply_to_id, reply_to_user_name, reply_to_content, created_at } = req.body
+  
+  // 输入验证
+  if (!content || content.trim().length === 0) {
+    return res.json({ success: false, message: '评论内容不能为空' })
+  }
+  if (content.length > 500) {
+    return res.json({ success: false, message: '评论内容不能超过500个字符' })
+  }
+  
   try {
     db.run(`INSERT INTO comments (id, note_id, user_id, user_name, content, reply_to_id, reply_to_user_name, reply_to_content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, note_id, user_id, user_name, content, reply_to_id || null, reply_to_user_name || null, reply_to_content || null, created_at])
+      [id, note_id, user_id, user_name, content.trim(), reply_to_id || null, reply_to_user_name || null, reply_to_content || null, created_at])
     saveDb()
     res.json({ success: true })
   } catch (e) {
@@ -564,6 +753,99 @@ app.post('/api/comments', authenticateToken, (req, res) => {
 app.delete('/api/comments/:id', authenticateToken, (req, res) => {
   try {
     db.run(`DELETE FROM comments WHERE id = ?`, [req.params.id])
+    saveDb()
+    res.json({ success: true })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// 意见反馈API
+
+// 提交意见反馈
+app.post('/api/feedback', authenticateToken, (req, res) => {
+  const { title, content, category, contact, user_id, user_name } = req.body
+  
+  // 输入验证
+  if (!title || title.trim().length === 0) {
+    return res.json({ success: false, message: '标题不能为空' })
+  }
+  if (title.length > 50) {
+    return res.json({ success: false, message: '标题长度不能超过50个字符' })
+  }
+  if (!content || content.trim().length === 0) {
+    return res.json({ success: false, message: '内容不能为空' })
+  }
+  if (content.length > 1000) {
+    return res.json({ success: false, message: '内容长度不能超过1000个字符' })
+  }
+  if (!category) {
+    return res.json({ success: false, message: '请选择分类' })
+  }
+  
+  try {
+    const id = Date.now().toString()
+    const created_at = new Date().toISOString()
+    
+    db.run(`INSERT INTO feedback (id, user_id, user_name, title, content, category, contact, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, user_id, user_name, title.trim(), content.trim(), category, contact?.trim() || '', created_at])
+    saveDb()
+    res.json({ success: true })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// 获取意见反馈列表（管理员）
+app.get('/api/feedback', authenticateToken, (req, res) => {
+  try {
+    // 检查用户是否为管理员
+    const currentUser = req.user
+    if (currentUser.role !== 'admin') {
+      return res.json({ success: false, message: '权限不足' })
+    }
+    
+    const stmt = db.prepare('SELECT * FROM feedback ORDER BY created_at DESC')
+    const feedbackList = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      feedbackList.push({
+        id: row.id,
+        user_id: row.user_id,
+        user_name: row.user_name,
+        title: row.title,
+        content: row.content,
+        category: row.category,
+        contact: row.contact,
+        status: row.status,
+        created_at: row.created_at
+      })
+    }
+    stmt.free()
+    res.json(feedbackList)
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// 更新意见状态（管理员）
+app.put('/api/feedback/:id', authenticateToken, (req, res) => {
+  const { status } = req.body
+  
+  try {
+    // 检查用户是否为管理员
+    const currentUser = req.user
+    if (currentUser.role !== 'admin') {
+      return res.json({ success: false, message: '权限不足' })
+    }
+    
+    // 验证状态值
+    const validStatuses = ['pending', 'processing', 'resolved', 'closed']
+    if (!validStatuses.includes(status)) {
+      return res.json({ success: false, message: '无效的状态值' })
+    }
+    
+    db.run(`UPDATE feedback SET status = ? WHERE id = ?`, [status, req.params.id])
     saveDb()
     res.json({ success: true })
   } catch (e) {

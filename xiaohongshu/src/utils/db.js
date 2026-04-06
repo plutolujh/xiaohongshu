@@ -8,7 +8,7 @@ function getToken() {
 }
 
 // 构建请求头
-function getHeaders() {
+export function getHeaders() {
   const token = getToken()
   const headers = { 'Content-Type': 'application/json' }
   if (token) {
@@ -44,6 +44,15 @@ export async function findUserByUsername(username) {
 export async function findUserById(id) {
   const users = await getAllUsers()
   return users.find(u => u.id === id)
+}
+
+export async function updateUser(id, userData) {
+  const res = await fetch(`${API_BASE}/users/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(userData)
+  })
+  return res.json()
 }
 
 // 笔记操作

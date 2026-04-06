@@ -73,3 +73,47 @@
   font-size: 14px;
   color: #666;
 }
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .home {
+    padding: 70px 16px 30px;
+  }
+  
+  .home-header {
+    margin-bottom: 24px;
+  }
+  
+  .home-header h1 {
+    font-size: 24px;
+  }
+  
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  
+  .home-pagination {
+    gap: 12px;
+    margin-top: 30px;
+  }
+  
+  .pagination-button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .pagination-info {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .notes-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .home-header h1 {
+    font-size: 20px;
+  }
+}
