@@ -241,6 +241,13 @@ async function initDb() {
       db.run(`UPDATE users SET role = 'admin' WHERE username = 'lujh'`)
       saveDb()
       console.log('已将lujh用户设置为管理员')
+    } else {
+      // 如果lujh用户不存在，创建它
+      const adminPassword = await bcrypt.hash('123456', 10)
+      db.run(`INSERT INTO users (id, username, password, nickname, avatar, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ['admin', 'lujh', adminPassword, '管理员', 'https://api.dicebear.com/7.x/avataaars/svg?seed=lujh', 'admin', 'active', new Date().toISOString()])
+      saveDb()
+      console.log('已创建lujh管理员用户')
     }
     stmt.free()
   } catch (e) {
@@ -325,6 +332,11 @@ async function initDb() {
     const hashedPassword = await bcrypt.hash('123456', 10)
     db.run(`INSERT INTO users (id, username, password, nickname, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
       ['demo', 'demo', hashedPassword, '美食达人', 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo', '2024-01-01T00:00:00Z'])
+    
+    // 添加管理员用户
+    const adminPassword = await bcrypt.hash('123456', 10)
+    db.run(`INSERT INTO users (id, username, password, nickname, avatar, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['admin', 'lujh', adminPassword, '管理员', 'https://api.dicebear.com/7.x/avataaars/svg?seed=lujh', 'admin', '2024-01-01T00:00:00Z'])
 
     // 添加示例笔记
     const notes = [
