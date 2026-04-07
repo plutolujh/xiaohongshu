@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 
 // API基础URL
-const API_BASE = 'http://localhost:3004/api'
+const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3004/api'
 import {
   Chart as ChartJS,
   CategoryScale,
