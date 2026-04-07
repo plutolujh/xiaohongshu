@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext'
 import Loading from '../components/Loading'
 import './FeedbackManagement.css'
 
+// API基础URL
+const API_BASE = 'http://localhost:3004/api'
+
 export default function FeedbackManagement() {
   const { user } = useAuth()
   const [feedbackList, setFeedbackList] = useState([])
@@ -20,7 +23,7 @@ export default function FeedbackManagement() {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/feedback', {
+      const response = await fetch(`${API_BASE}/feedback`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -44,7 +47,7 @@ export default function FeedbackManagement() {
     setUpdatingStatus(true)
     
     try {
-      const response = await fetch(`/api/feedback/${id}`, {
+      const response = await fetch(`${API_BASE}/feedback/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

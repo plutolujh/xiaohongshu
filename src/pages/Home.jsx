@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
-import { getAllNotes } from '../utils/db'
+import { getAllNotes, getHeaders } from '../utils/db'
 import NoteCard from '../components/NoteCard'
 import Loading from '../components/Loading'
+import { useI18n } from '../context/I18nContext'
+import { t } from '../i18n/i18n'
 import './Home.css'
 
 export default function Home() {
+  const { language } = useI18n()
   const [notes, setNotes] = useState([])
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -13,6 +16,9 @@ export default function Home() {
   const [popularTags, setPopularTags] = useState([])
   const [selectedTag, setSelectedTag] = useState('')
   const [tagsLoading, setTagsLoading] = useState(false)
+  
+  // API基础URL
+  const API_BASE = 'http://localhost:3004/api'
 
   useEffect(() => {
     loadNotes()
@@ -21,16 +27,25 @@ export default function Home() {
 
   const loadNotes = async () => {
     setLoading(true)
-    const result = await getAllNotes(page, pageSize)
-    setNotes(result.notes)
-    setTotal(result.total)
-    setLoading(false)
+    try {
+      const result = await getAllNotes(page, pageSize)
+      setNotes(result.notes)
+      setTotal(result.total)
+    } catch (err) {
+      console.error('Error loading notes:', err)
+      setNotes([])
+      setTotal(0)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const loadPopularTags = async () => {
     setTagsLoading(true)
     try {
-      const response = await fetch('/api/tags/popular?limit=10')
+      const response = await fetch(`${API_BASE}/tags/popular?limit=10`, {
+        headers: getHeaders()
+      })
       const tags = await response.json()
       setPopularTags(tags)
     } catch (err) {
@@ -49,7 +64,9 @@ export default function Home() {
       setSelectedTag(tagId)
       try {
         setLoading(true)
-        const response = await fetch(`/api/tags/${tagId}/notes?page=1&limit=${pageSize}`)
+        const response = await fetch(`${API_BASE}/tags/${tagId}/notes?page=1&limit=${pageSize}`, {
+          headers: getHeaders()
+        })
         const data = await response.json()
         setNotes(data.notes)
         setTotal(data.total || 0)
@@ -81,18 +98,20 @@ export default function Home() {
     }
   }
 
+  const totalPages = Math.ceil(total / pageSize)
+  
   return (
     <div className="home">
       <div className="home-header">
-        <h1>发现美食</h1>
-        <p>发现更多美食灵感</p>
+        <h1>{t('home.title', language)}</h1>
+        <p>{t('home.subtitle', language)}</p>
       </div>
       <div className="home-controls">
         <div className="popular-tags">
-          <h3>热门标签</h3>
+          <h3>{t('home.popularTags', language)}</h3>
           {tagsLoading ? (
             <div className="tags-loading">
-              <Loading text="加载中..." size="small" />
+              <Loading text={t('home.loading', language)} size="small" />
             </div>
           ) : popularTags.length > 0 ? (
             <div className="tags-list">
@@ -100,7 +119,7 @@ export default function Home() {
                 className={`tag-button ${selectedTag === '' ? 'active' : ''}`}
                 onClick={() => handleTagFilter('')}
               >
-                全部
+                {t('home.all', language)}
               </button>
               {popularTags.map(tag => (
                 <button
@@ -115,29 +134,29 @@ export default function Home() {
             </div>
           ) : (
             <div className="tags-empty">
-              <p>暂无标签</p>
+              <p>{t('home.noTags', language)}</p>
             </div>
           )}
         </div>
         <div className="page-size-selector">
-          <label htmlFor="pageSize">每页显示：</label>
+          <label htmlFor="pageSize">{t('home.pageSize', language)}</label>
           <select 
             id="pageSize" 
             value={pageSize} 
             onChange={handlePageSizeChange}
             className="page-size-select"
           >
-            <option value={10}>10条</option>
-            <option value={20}>20条</option>
-            <option value={30}>30条</option>
-            <option value={50}>50条</option>
+            <option value={10}>{language === 'zh-CN' ? '10条' : '10'}</option>
+            <option value={20}>{language === 'zh-CN' ? '20条' : '20'}</option>
+            <option value={30}>{language === 'zh-CN' ? '30条' : '30'}</option>
+            <option value={50}>{language === 'zh-CN' ? '50条' : '50'}</option>
           </select>
         </div>
       </div>
       <div className="notes-grid">
         {loading ? (
           <div className="page-loading">
-            <Loading text="正在加载美食笔记..." size="large" />
+            <Loading text={t('home.loading', language)} size="large" />
           </div>
         ) : notes.length > 0 ? (
           notes.map(note => (
@@ -145,7 +164,7 @@ export default function Home() {
           ))
         ) : (
           <div className="home-empty">
-            <p>暂无美食笔记，快去发布第一篇吧！</p>
+            <p>{t('home.noNotes', language)}</p>
           </div>
         )}
       </div>
@@ -156,17 +175,17 @@ export default function Home() {
             onClick={handlePrevPage}
             disabled={page === 1}
           >
-            上一页
+            {t('home.prevPage', language)}
           </button>
           <span className="pagination-info">
-            第 {page} 页，共 {Math.ceil(total / pageSize)} 页
+            {t('home.pageInfo', language).replace('{page}', page).replace('{totalPages}', totalPages)}
           </span>
           <button 
-            className={`pagination-button ${page === Math.ceil(total / pageSize) ? 'disabled' : ''}`}
+            className={`pagination-button ${page === totalPages ? 'disabled' : ''}`}
             onClick={handleNextPage}
-            disabled={page === Math.ceil(total / pageSize)}
+            disabled={page === totalPages}
           >
-            下一页
+            {t('home.nextPage', language)}
           </button>
         </div>
       )}

@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react'
+
+// API基础URL
+const API_BASE = 'http://localhost:3004/api'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentUser } from '../utils/db'
 import Loading from '../components/Loading'
@@ -24,7 +27,7 @@ const NoteManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch('/api/tags', {
+      const response = await fetch(`${API_BASE}/tags`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -45,7 +48,7 @@ const NoteManagement = () => {
       let response, data
       if (selectedTag) {
         // 按标签筛选
-        response = await fetch(`/api/tags/${selectedTag}/notes?page=${page}&limit=${pageSize}`, {
+        response = await fetch(`${API_BASE}/tags/${selectedTag}/notes?page=${page}&limit=${pageSize}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -53,7 +56,7 @@ const NoteManagement = () => {
         data = await response.json()
       } else {
         // 获取所有笔记
-        response = await fetch(`/api/notes?page=${page}&limit=${pageSize}`, {
+        response = await fetch(`${API_BASE}/notes?page=${page}&limit=${pageSize}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -68,7 +71,7 @@ const NoteManagement = () => {
       const notesWithTagsData = {}
       for (const note of data.notes) {
         try {
-          const tagsResponse = await fetch(`/api/notes/${note.id}/tags`, {
+          const tagsResponse = await fetch(`${API_BASE}/notes/${note.id}/tags`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -107,7 +110,7 @@ const NoteManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`/api/notes/${noteId}`, {
+      const response = await fetch(`${API_BASE}/notes/${noteId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -153,7 +156,7 @@ const NoteManagement = () => {
       const token = currentUser ? currentUser.token : null
       const tagIds = tags.map(tag => tag.id)
       
-      await fetch(`/api/notes/${noteId}/tags`, {
+      await fetch(`${API_BASE}/notes/${noteId}/tags`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -3,6 +3,9 @@ import { getHeaders } from '../utils/db'
 import Loading from '../components/Loading'
 import './DatabaseManagement.css'
 
+// API基础URL
+const API_BASE = 'http://localhost:3004/api'
+
 export default function DatabaseManagement() {
   const [tables, setTables] = useState([])
   const [selectedTable, setSelectedTable] = useState(null)
@@ -20,7 +23,7 @@ export default function DatabaseManagement() {
 
   const loadDbInfo = async () => {
     try {
-      const res = await fetch('/api/db/info', {
+      const res = await fetch(`${API_BASE}/db/info`, {
         headers: getHeaders()
       })
       const data = await res.json()
@@ -35,7 +38,7 @@ export default function DatabaseManagement() {
   const loadTables = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/db/tables', {
+      const res = await fetch(`${API_BASE}/db/tables`, {
         headers: getHeaders()
       })
       const data = await res.json()
@@ -54,7 +57,7 @@ export default function DatabaseManagement() {
   const loadTableData = async (tableName) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/db/table/${tableName}`, {
+      const res = await fetch(`${API_BASE}/db/table/${tableName}`, {
         headers: getHeaders()
       })
       const data = await res.json()
@@ -81,7 +84,7 @@ export default function DatabaseManagement() {
     
     setLoading(true)
     try {
-      const res = await fetch('/api/db/query', {
+      const res = await fetch(`${API_BASE}/db/query`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ sql: sqlQuery })

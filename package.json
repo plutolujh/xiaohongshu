@@ -1,8 +1,12 @@
 {
   "name": "xiaohongshu-food-share",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.8.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/plutolujh/xiaohongshu.git"
+  },
   "engines": {
     "node": ">=18.0.0"
   },

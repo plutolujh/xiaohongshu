@@ -110,6 +110,35 @@
   right: -60px;
 }
 
+/* 移动端响应式调整 */
+@media (max-width: 768px) {
+  .image-modal-prev {
+    left: 10px;
+  }
+  
+  .image-modal-next {
+    right: 10px;
+  }
+  
+  .image-modal-content {
+    max-width: 95%;
+    max-height: 95%;
+  }
+  
+  .image-modal-img {
+    max-height: 70vh;
+  }
+  
+  .image-modal-close,
+  .image-modal-rotate {
+    top: -30px;
+  }
+  
+  .image-modal-counter {
+    bottom: -30px;
+  }
+}
+
 /* 图片计数器 */
 .image-modal-counter {
   position: absolute;
@@ -283,6 +312,41 @@
 .note-detail-date {
   font-size: 13px;
   color: #999;
+}
+
+.note-detail-tags {
+  margin-bottom: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.note-detail-tags h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px;
+}
+
+.note-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.note-tag {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #f5f5f5;
+  color: #666;
+  border-radius: 16px;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.note-tag:hover {
+  background: #e8f4f8;
+  color: #1890ff;
+  cursor: pointer;
 }
 
 .note-detail-section {

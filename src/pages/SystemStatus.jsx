@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react'
+
+// API基础URL
+const API_BASE = 'http://localhost:3004/api'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -41,7 +44,7 @@ const SystemStatus = () => {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const response = await fetch('/api/status', {
+        const response = await fetch(`${API_BASE}/status`, {
           headers: {
             'Authorization': `Bearer ${user.token}`
           }
