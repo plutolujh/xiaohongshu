@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { findNoteById, updateNote, getCommentsByNoteId, createComment, deleteCommentById } from '../utils/db'
+import { findNoteById, updateNote, getCommentsByNoteId, createComment, deleteCommentById, getNoteTags } from '../utils/db'
 import { useAuth } from '../context/AuthContext'
 import Loading from '../components/Loading'
 import './NoteDetail.css'
@@ -9,6 +9,7 @@ export default function NoteDetail() {
   const { id } = useParams()
   const [note, setNote] = useState(null)
   const [comments, setComments] = useState([])
+  const [tags, setTags] = useState([])
   const [newComment, setNewComment] = useState('')
   const [replyToComment, setReplyToComment] = useState(null)
   const [selectedImage, setSelectedImage] = useState(null)
@@ -22,6 +23,7 @@ export default function NoteDetail() {
     if (id) {
       findNoteById(id).then(setNote)
       getCommentsByNoteId(id).then(setComments)
+      getNoteTags(id).then(setTags)
     }
   }, [id])
 
@@ -190,6 +192,19 @@ export default function NoteDetail() {
               <span className="note-detail-date">{formatDate(note.created_at)}</span>
             </div>
           </div>
+
+          {tags.length > 0 && (
+            <div className="note-detail-tags">
+              <h3>标签</h3>
+              <div className="note-tags-container">
+                {tags.map(tag => (
+                  <span key={tag.id} className="note-tag">
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="note-detail-section">
             <h3>简介</h3>

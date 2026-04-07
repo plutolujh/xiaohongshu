@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import './Feedback.css'
 
+// API基础URL
+const API_BASE = 'http://localhost:3004/api'
+
 export default function Feedback() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -36,7 +39,7 @@ export default function Feedback() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/feedback', {
+      const response = await fetch(`${API_BASE}/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,8 @@
 import { createContext, useContext, useState } from 'react'
-import { initDatabase, getAllUsers, createUser, findUserByUsername, findUserById, getCurrentUser, setCurrentUser } from '../utils/db'
+import { initDatabase, getAllUsers, createUser, findUserByUsername, findUserById, getCurrentUser, setCurrentUser, getHeaders } from '../utils/db'
+
+// API基础URL
+const API_BASE = 'http://localhost:3004/api'
 
 export const AuthContext = createContext(null)
 
@@ -7,7 +10,7 @@ export const AuthContext = createContext(null)
 initDatabase()
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(getCurrentUser)
+  const [user, setUser] = useState(getCurrentUser())
   const [users, setUsers] = useState([])
 
   // 注册
@@ -21,18 +24,18 @@ export function AuthProvider({ children }) {
 
     try {
       // 调用后端注册API
-      const response = await fetch('/api/register', {
+      const response = await fetch(`${API_BASE}/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ username, password, nickname })
       })
       const result = await response.json()
       
       if (result.success) {
         // 注册成功后自动登录
-        const loginResponse = await fetch('/api/login', {
+        const loginResponse = await fetch(`${API_BASE}/login`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getHeaders(),
           body: JSON.stringify({ username, password })
         })
         const loginResult = await loginResponse.json()
@@ -64,9 +67,9 @@ export function AuthProvider({ children }) {
 
     try {
       // 发送登录请求到服务器
-      const response = await fetch('/api/login', {
+      const response = await fetch(`${API_BASE}/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ username, password })
       })
       const result = await response.json()

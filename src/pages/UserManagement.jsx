@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react'
+
+// API基础URL
+const API_BASE = 'http://localhost:3004/api'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentUser } from '../utils/db'
 import Loading from '../components/Loading'
@@ -24,7 +27,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch('/api/users', {
+      const response = await fetch(`${API_BASE}/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -48,7 +51,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`${API_BASE}/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -77,7 +80,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`/api/users/${editingUser.id}`, {
+      const response = await fetch(`${API_BASE}/users/${editingUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +112,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`/api/users/${userId}/status`, {
+      const response = await fetch(`${API_BASE}/users/${userId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -136,7 +139,7 @@ const UserManagement = () => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch(`/api/users/${userId}/role`, {
+      const response = await fetch(`${API_BASE}/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

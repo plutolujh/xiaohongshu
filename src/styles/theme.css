@@ -1,0 +1,64 @@
+:root {
+  /* 亮色主题变量 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --text-primary: #333333;
+  --text-secondary: #6c757d;
+  --text-muted: #999999;
+  --border-color: #dee2e6;
+  --accent-color: #ff2442;
+  --accent-hover: #e62039;
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --error-color: #dc3545;
+  --info-color: #17a2b8;
+  --card-bg: #ffffff;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --button-bg: #ff2442;
+  --button-hover: #e62039;
+  --button-text: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #ced4da;
+  --input-focus: #80bdff;
+  --input-focus-border: #007bff;
+  --nav-bg: #ffffff;
+  --nav-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  --footer-bg: #f8f9fa;
+  --footer-border: #e9ecef;
+}
+
+/* 暗色主题变量 */
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #3d3d3d;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --text-muted: #888888;
+  --border-color: #444444;
+  --accent-color: #ff3a5e;
+  --accent-hover: #ff5a78;
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --error-color: #dc3545;
+  --info-color: #17a2b8;
+  --card-bg: #2d2d2d;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --button-bg: #ff3a5e;
+  --button-hover: #ff5a78;
+  --button-text: #ffffff;
+  --input-bg: #3d3d3d;
+  --input-border: #555555;
+  --input-focus: #80bdff;
+  --input-focus-border: #007bff;
+  --nav-bg: #2d2d2d;
+  --nav-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --footer-bg: #2d2d2d;
+  --footer-border: #444444;
+}
+
+/* 主题过渡效果 */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}

@@ -30,7 +30,7 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
 })()
 
 const app = express()
-const PORT = process.env.PORT || 3002
+const PORT = process.env.PORT || 3004
 
 // PostgreSQL数据库连接
 const dbUrl = process.env.DATABASE_URL || 'postgresql://lu_xiaohong_user:YOUR_PASSWORD@dpg-d79o5l15pdvs73bn8jfg-a.oregon-postgres.render.com:5432/lu_xiaohong?sslmode=require'
