@@ -24,7 +24,7 @@ export default function DatabaseManagement() {
       })
       const data = await res.json()
       if (data.success) {
-        setDbInfo(data)
+        setDbInfo(data.data)
       }
     } catch (err) {
       console.error('加载数据库信息失败:', err)
@@ -39,7 +39,7 @@ export default function DatabaseManagement() {
       })
       const data = await res.json()
       if (data.success) {
-        setTables(data.tables)
+        setTables(data.data.map(table => table.name))
       } else {
         setError(data.message)
       }
@@ -59,7 +59,7 @@ export default function DatabaseManagement() {
       const data = await res.json()
       if (data.success) {
         setSelectedTable(tableName)
-        setTableData(data)
+        setTableData(data.data)
         setQueryResult(null)
         setError('')
       } else {
@@ -87,7 +87,7 @@ export default function DatabaseManagement() {
       })
       const data = await res.json()
       if (data.success) {
-        setQueryResult(data)
+        setQueryResult(data.data)
         setError('')
         // 如果是修改操作，重新加载当前表数据
         if (selectedTable && (sqlQuery.trim().toUpperCase().startsWith('INSERT') || 
@@ -112,7 +112,9 @@ export default function DatabaseManagement() {
         <p>仅管理员可访问的数据库管理功能</p>
         {dbInfo && (
           <div className="database-info">
-            <strong>数据库文件路径:</strong> {dbInfo.dbPath}
+            <strong>数据库类型:</strong> {dbInfo.database}<br/>
+            <strong>版本:</strong> {dbInfo.version}<br/>
+            <strong>表数量:</strong> {dbInfo.tables.length}
           </div>
         )}
       </div>
@@ -153,47 +155,21 @@ export default function DatabaseManagement() {
                 <div className="loading">加载中...</div>
               ) : tableData ? (
                 <div>
-                  <div className="table-info">
-                    <h3>表结构</h3>
-                    <table className="structure-table">
-                      <thead>
-                        <tr>
-                          <th>字段名</th>
-                          <th>类型</th>
-                          <th>是否为空</th>
-                          <th>默认值</th>
-                          <th>主键</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tableData.columns.map(column => (
-                          <tr key={column.cid}>
-                            <td>{column.name}</td>
-                            <td>{column.type}</td>
-                            <td>{column.notnull ? '否' : '是'}</td>
-                            <td>{column.dflt_value || '-'}</td>
-                            <td>{column.pk ? '是' : '否'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
                   <div className="table-rows">
                     <h3>表数据</h3>
                     {tableData.rows.length > 0 ? (
                       <table className="data-table">
                         <thead>
                           <tr>
-                            {tableData.columns.map(column => (
-                              <th key={column.cid}>{column.name}</th>
+                            {Object.keys(tableData.rows[0]).map((column, index) => (
+                              <th key={index}>{column}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {tableData.rows.map((row, index) => (
                             <tr key={index}>
-                              {row.map((value, colIndex) => (
+                              {Object.values(row).map((value, colIndex) => (
                                 <td key={colIndex}>{value || '-'}</td>
                               ))}
                             </tr>
