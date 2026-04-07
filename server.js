@@ -162,7 +162,7 @@ function validateRequest(req, res, next) {
 // 优化CORS配置，限制为特定域名
 const allowedOrigins = process.env.NODE_ENV === 'production' 
   ? [process.env.FRONTEND_URL || '*']
-  : ['http://localhost:3000', 'http://localhost:3002']
+  : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3003']
 
 app.use(cors({
   origin: allowedOrigins,
