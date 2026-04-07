@@ -10,9 +10,13 @@ export default function Home() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [pageSize, setPageSize] = useState(10)
+  const [popularTags, setPopularTags] = useState([])
+  const [selectedTag, setSelectedTag] = useState('')
+  const [tagsLoading, setTagsLoading] = useState(false)
 
   useEffect(() => {
     loadNotes()
+    loadPopularTags()
   }, [page, pageSize])
 
   const loadNotes = async () => {
@@ -21,6 +25,41 @@ export default function Home() {
     setNotes(result.notes)
     setTotal(result.total)
     setLoading(false)
+  }
+
+  const loadPopularTags = async () => {
+    setTagsLoading(true)
+    try {
+      const response = await fetch('/api/tags/popular?limit=10')
+      const tags = await response.json()
+      setPopularTags(tags)
+    } catch (err) {
+      console.error('Error loading popular tags:', err)
+    } finally {
+      setTagsLoading(false)
+    }
+  }
+
+  const handleTagFilter = async (tagId) => {
+    if (tagId === '' || selectedTag === tagId) {
+      setSelectedTag('')
+      setPage(1)
+      loadNotes()
+    } else {
+      setSelectedTag(tagId)
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/tags/${tagId}/notes?page=1&limit=${pageSize}`)
+        const data = await response.json()
+        setNotes(data.notes)
+        setTotal(data.total || 0)
+        setPage(1)
+      } catch (err) {
+        console.error('Error filtering notes by tag:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
   }
 
   const handlePageSizeChange = (e) => {
@@ -49,6 +88,37 @@ export default function Home() {
         <p>发现更多美食灵感</p>
       </div>
       <div className="home-controls">
+        <div className="popular-tags">
+          <h3>热门标签</h3>
+          {tagsLoading ? (
+            <div className="tags-loading">
+              <Loading text="加载中..." size="small" />
+            </div>
+          ) : popularTags.length > 0 ? (
+            <div className="tags-list">
+              <button 
+                className={`tag-button ${selectedTag === '' ? 'active' : ''}`}
+                onClick={() => handleTagFilter('')}
+              >
+                全部
+              </button>
+              {popularTags.map(tag => (
+                <button
+                  key={tag.id}
+                  className={`tag-button ${selectedTag === tag.id ? 'active' : ''}`}
+                  onClick={() => handleTagFilter(tag.id)}
+                >
+                  {tag.name}
+                  <span className="tag-count">({tag.note_count})</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="tags-empty">
+              <p>暂无标签</p>
+            </div>
+          )}
+        </div>
         <div className="page-size-selector">
           <label htmlFor="pageSize">每页显示：</label>
           <select 
