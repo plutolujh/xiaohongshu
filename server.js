@@ -928,6 +928,80 @@ initDb().then(() => {
     res.json({ success: true, status })
   })
   
+  // 数据库管理API
+  app.get('/api/db/info', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const result = await query('SELECT version() as version')
+      res.json({ success: true, data: {
+        database: 'PostgreSQL',
+        version: result.rows[0].version,
+        tables: ['users', 'notes', 'comments', 'feedback']
+      } })
+    } catch (e) {
+      res.json({ success: false, message: e.message })
+    }
+  })
+  
+  app.get('/api/db/tables', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const tables = ['users', 'notes', 'comments', 'feedback']
+      const tableInfo = []
+      
+      for (const table of tables) {
+        const result = await query(`SELECT COUNT(*) as count FROM ${table}`)
+        tableInfo.push({
+          name: table,
+          count: result.rows[0].count
+        })
+      }
+      
+      res.json({ success: true, data: tableInfo })
+    } catch (e) {
+      res.json({ success: false, message: e.message })
+    }
+  })
+  
+  app.get('/api/db/table/:tableName', authenticateToken, requireAdmin, async (req, res) => {
+    const { tableName } = req.params
+    const { page = 1, limit = 10 } = req.query
+    
+    try {
+      const validTables = ['users', 'notes', 'comments', 'feedback']
+      if (!validTables.includes(tableName)) {
+        return res.json({ success: false, message: '无效的表名' })
+      }
+      
+      const offset = (page - 1) * limit
+      const result = await query(`SELECT * FROM ${tableName} ORDER BY created_at DESC LIMIT $1 OFFSET $2`, [limit, offset])
+      const countResult = await query(`SELECT COUNT(*) as total FROM ${tableName}`)
+      
+      res.json({ success: true, data: {
+        rows: result.rows,
+        total: countResult.rows[0].total,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      } })
+    } catch (e) {
+      res.json({ success: false, message: e.message })
+    }
+  })
+  
+  app.post('/api/db/query', authenticateToken, requireAdmin, async (req, res) => {
+    const { query: sqlQuery } = req.body
+    
+    try {
+      // 限制只能执行SELECT查询
+      if (!sqlQuery.toLowerCase().startsWith('select')) {
+        return res.json({ success: false, message: '只能执行SELECT查询' })
+      }
+      
+      const result = await query(sqlQuery)
+      res.json({ success: true, data: result.rows })
+    } catch (e) {
+      res.json({ success: false, message: e.message })
+    }
+  })
+  
   // 生产环境下处理前端路由
   if (process.env.NODE_ENV === 'production') {
     app.get('*', (req, res) => {
