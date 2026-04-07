@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { createNote } from '../utils/db'
 import heic2any from 'heic2any'
+import TagInput from '../components/TagInput'
 import './Publish.css'
 
 const templates = [
@@ -75,6 +76,7 @@ export default function Publish() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const [selectedTags, setSelectedTags] = useState([])
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -245,6 +247,20 @@ export default function Publish() {
     setLoading(true)
     try {
       await createNote(newNote)
+      
+      // 如果有选择标签，为笔记添加标签
+      if (selectedTags.length > 0) {
+        const tagIds = selectedTags.map(tag => tag.id)
+        await fetch(`/api/notes/${newNote.id}/tags`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ tagIds })
+        })
+      }
+      
       navigate('/')
     } catch (error) {
       console.error('发布笔记失败:', error)
@@ -334,6 +350,15 @@ export default function Publish() {
               onChange={(e) => setContent(e.target.value)}
               placeholder="分享你的美食故事、食材和做法...\n\n示例：\n这道菜是我家的招牌菜，做法简单又好吃！\n\n### 食材\n• 主料：鸡蛋、西红柿\n• 调料：盐、糖、生抽\n\n### 做法\n1. 准备食材\n2. 开始烹饪\n3. 调味出锅"
               rows={15}
+            />
+          </div>
+
+          <div className="publish-field">
+            <label>标签</label>
+            <TagInput 
+              selectedTags={selectedTags} 
+              onChange={setSelectedTags} 
+              placeholder="输入标签，按回车添加"
             />
           </div>
 

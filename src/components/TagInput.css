@@ -1,0 +1,139 @@
+.tag-input-container {
+  margin-bottom: 20px;
+}
+
+.tag-input-loading {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  min-height: 40px;
+  align-items: center;
+}
+
+.selected-tag {
+  display: inline-flex;
+  align-items: center;
+  background: #ff4757;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.selected-tag:hover {
+  background: #ff3742;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(255, 71, 87, 0.3);
+}
+
+.remove-tag-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 8px;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.remove-tag-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.tag-input-wrapper {
+  margin-bottom: 15px;
+}
+
+.tag-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 25px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.tag-input:focus {
+  border-color: #ff4757;
+  box-shadow: 0 0 0 2px rgba(255, 71, 87, 0.1);
+}
+
+.tag-suggestions {
+  margin-top: 15px;
+}
+
+.tag-suggestions h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-item {
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tag-item:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+}
+
+.tag-item.selected {
+  background: #ff4757;
+  color: white;
+  border-color: #ff4757;
+}
+
+.tag-item.selected:hover {
+  background: #ff3742;
+  border-color: #ff3742;
+}
+
+@media (max-width: 768px) {
+  .tag-input {
+    padding: 10px 14px;
+  }
+  
+  .selected-tag {
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+  
+  .tag-item {
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+}

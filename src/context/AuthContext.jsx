@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from 'react'
 import { initDatabase, getAllUsers, createUser, findUserByUsername, findUserById, getCurrentUser, setCurrentUser } from '../utils/db'
 
-const AuthContext = createContext(null)
+export const AuthContext = createContext(null)
 
 // 初始化数据库
 initDatabase()
