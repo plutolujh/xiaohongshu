@@ -4,7 +4,7 @@ import Loading from '../components/Loading'
 import './DatabaseManagement.css'
 
 // API基础URL
-const API_BASE = 'http://localhost:3004/api'
+const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3004/api'
 
 export default function DatabaseManagement() {
   const [tables, setTables] = useState([])

@@ -17,9 +17,6 @@ export default function Home() {
   const [selectedTag, setSelectedTag] = useState('')
   const [tagsLoading, setTagsLoading] = useState(false)
   
-  // API基础URL
-  const API_BASE = 'http://localhost:3004/api'
-
   useEffect(() => {
     loadNotes()
     loadPopularTags()
@@ -43,10 +40,10 @@ export default function Home() {
   const loadPopularTags = async () => {
     setTagsLoading(true)
     try {
-      const response = await fetch(`${API_BASE}/tags/popular?limit=10`, {
+      const tags = await fetch(`${process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3004/api'}/tags/popular?limit=10`, {
         headers: getHeaders()
       })
-      const tags = await response.json()
+      .then(response => response.json())
       setPopularTags(tags)
     } catch (err) {
       console.error('Error loading popular tags:', err)
@@ -64,10 +61,10 @@ export default function Home() {
       setSelectedTag(tagId)
       try {
         setLoading(true)
-        const response = await fetch(`${API_BASE}/tags/${tagId}/notes?page=1&limit=${pageSize}`, {
+        const data = await fetch(`${process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3004/api'}/tags/${tagId}/notes?page=1&limit=${pageSize}`, {
           headers: getHeaders()
         })
-        const data = await response.json()
+        .then(response => response.json())
         setNotes(data.notes)
         setTotal(data.total || 0)
         setPage(1)
