@@ -671,10 +671,12 @@ app.post('/api/notes', authenticateToken, async (req, res) => {
   }
   
   try {
+    // 如果没有传递created_at，设置为当前时间
+    const now = new Date().toISOString()
     await query(
       `INSERT INTO notes (id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [id, title.trim(), content.trim(), ingredients, steps, JSON.stringify(images), author_id, author_name, likes || 0, liked ? 1 : 0, created_at]
+      [id, title.trim(), content.trim(), ingredients, steps, JSON.stringify(images), author_id, author_name, likes || 0, liked ? 1 : 0, created_at || now]
     )
     res.json({ success: true })
   } catch (e) {

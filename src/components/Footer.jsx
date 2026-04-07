@@ -35,7 +35,7 @@ export default function Footer() {
     <footer className="footer">
       <div className="footer-content">
         <div className="footer-info">
-          <p>© 2024 美食笔记</p>
+          <p>© 2026 美食笔记</p>
           <p>版本: {appInfo.version}</p>
           <p>最后发布: {appInfo.lastPublishTime}</p>
         </div>

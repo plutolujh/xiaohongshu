@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { findNoteById, updateNote } from '../utils/db'
+import Loading from '../components/Loading'
 import './Publish.css'
 
 export default function EditNote() {
@@ -10,6 +11,9 @@ export default function EditNote() {
   const [content, setContent] = useState('')
   const [images, setImages] = useState([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [loadingNote, setLoadingNote] = useState(true)
+  const [success, setSuccess] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -24,6 +28,10 @@ export default function EditNote() {
         } else {
           navigate('/')
         }
+        setLoadingNote(false)
+      }).catch(err => {
+        setError('加载笔记失败，请重试')
+        setLoadingNote(false)
       })
     }
   }, [id, user, navigate])
@@ -109,6 +117,7 @@ export default function EditNote() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setSuccess(false)
 
     if (!title.trim()) {
       setError('请填写标题')
@@ -160,8 +169,33 @@ export default function EditNote() {
       created_at: new Date().toISOString()
     }
 
-    await updateNote(updatedNote)
-    navigate(`/note/${id}`)
+    setLoading(true)
+    try {
+      const result = await updateNote(updatedNote)
+      if (result.success) {
+        setSuccess(true)
+        // 延迟1秒后跳转，让用户看到成功提示
+        setTimeout(() => {
+          navigate(`/note/${id}`)
+        }, 1000)
+      } else {
+        setError('保存失败：' + (result.message || '未知错误'))
+      }
+    } catch (err) {
+      setError('保存失败，请重试')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loadingNote) {
+    return (
+      <div className="publish-page">
+        <div className="page-loading">
+          <Loading text="正在加载笔记..." size="large" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -172,6 +206,7 @@ export default function EditNote() {
 
         <form onSubmit={handleSubmit} className="publish-form">
           {error && <div className="publish-error">{error}</div>}
+          {success && <div className="publish-success">保存成功！</div>}
 
           <div className="publish-field">
             <label>美食图片（最多9张）</label>
@@ -212,6 +247,7 @@ export default function EditNote() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="给美食取个名字吧"
               maxLength={50}
+              disabled={loading}
             />
           </div>
 
@@ -222,11 +258,17 @@ export default function EditNote() {
               onChange={(e) => setContent(e.target.value)}
               placeholder="分享你的美食故事、食材和做法...\n\n示例：\n这道菜是我家的招牌菜，做法简单又好吃！\n\n### 食材\n• 主料：鸡蛋、西红柿\n• 调料：盐、糖、生抽\n\n### 做法\n1. 准备食材\n2. 开始烹饪\n3. 调味出锅"
               rows={15}
+              disabled={loading}
             />
           </div>
 
-          <button type="submit" className="publish-button">
-            保存修改
+          <button type="submit" className="publish-button" disabled={loading}>
+            {loading ? (
+              <div className="button-loading">
+                <Loading text="" size="small" />
+                <span>保存中...</span>
+              </div>
+            ) : '保存修改'}
           </button>
         </form>
       </div>

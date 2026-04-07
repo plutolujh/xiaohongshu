@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { findNoteById, updateNote, getCommentsByNoteId, createComment, deleteCommentById } from '../utils/db'
 import { useAuth } from '../context/AuthContext'
+import Loading from '../components/Loading'
 import './NoteDetail.css'
 
 export default function NoteDetail() {
@@ -13,6 +14,7 @@ export default function NoteDetail() {
   const [selectedImage, setSelectedImage] = useState(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(-1)
   const [rotation, setRotation] = useState(0)
+  const [loading, setLoading] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -39,25 +41,32 @@ export default function NoteDetail() {
     e.preventDefault()
     if (!newComment.trim() || !user) return
 
-    const commentData = {
-      id: Date.now().toString(),
-      note_id: id,
-      user_id: user.id,
-      user_name: user.nickname,
-      content: newComment.trim(),
-      created_at: new Date().toISOString()
-    }
+    setLoading(true)
+    try {
+      const commentData = {
+        id: Date.now().toString(),
+        note_id: id,
+        user_id: user.id,
+        user_name: user.nickname,
+        content: newComment.trim(),
+        created_at: new Date().toISOString()
+      }
 
-    if (replyToComment) {
-      commentData.reply_to_id = replyToComment.id
-      commentData.reply_to_user_name = replyToComment.user_name
-      commentData.reply_to_content = replyToComment.content
-    }
+      if (replyToComment) {
+        commentData.reply_to_id = replyToComment.id
+        commentData.reply_to_user_name = replyToComment.user_name
+        commentData.reply_to_content = replyToComment.content
+      }
 
-    await createComment(commentData)
-    setComments([commentData, ...comments])
-    setNewComment('')
-    setReplyToComment(null)
+      await createComment(commentData)
+      setComments([commentData, ...comments])
+      setNewComment('')
+      setReplyToComment(null)
+    } catch (err) {
+      console.error('评论失败:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleReply = (comment) => {
@@ -95,7 +104,9 @@ export default function NoteDetail() {
   if (!note) {
     return (
       <div className="note-detail">
-        <div className="note-detail-loading">加载中...</div>
+        <div className="page-loading">
+          <Loading text="正在加载笔记详情..." size="large" />
+        </div>
       </div>
     )
   }
@@ -214,9 +225,17 @@ export default function NoteDetail() {
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder={replyToComment ? `回复 @${replyToComment.user_name}...` : "添加评论..."}
                     className="comment-input"
+                    disabled={loading}
                   />
                 </div>
-                <button type="submit" className="comment-submit">发布</button>
+                <button type="submit" className="comment-submit" disabled={loading}>
+                  {loading ? (
+                    <div className="button-loading">
+                      <Loading text="" size="small" />
+                      <span>发布中...</span>
+                    </div>
+                  ) : '发布'}
+                </button>
               </form>
             ) : (
               <p className="comment-login-tip">登录后可以评论</p>

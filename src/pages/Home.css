@@ -22,6 +22,44 @@
   margin: 0;
 }
 
+.home-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-size-selector label {
+  font-size: 14px;
+  color: #666;
+}
+
+.page-size-select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-size-select:hover {
+  border-color: #ff2442;
+}
+
+.page-size-select:focus {
+  outline: none;
+  border-color: #ff2442;
+  box-shadow: 0 0 0 2px rgba(255, 36, 66, 0.1);
+}
+
 .notes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -86,6 +124,16 @@
   
   .home-header h1 {
     font-size: 24px;
+  }
+  
+  .home-controls {
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  
+  .page-size-selector label,
+  .page-size-select {
+    font-size: 13px;
   }
   
   .notes-grid {

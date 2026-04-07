@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentUser } from '../utils/db'
+import Loading from '../components/Loading'
 import './UserManagement.css'
 
 const UserManagement = () => {
@@ -10,6 +11,10 @@ const UserManagement = () => {
   const [error, setError] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [updatingRole, setUpdatingRole] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -39,6 +44,7 @@ const UserManagement = () => {
       return
     }
 
+    setDeleting(true)
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -57,6 +63,8 @@ const UserManagement = () => {
     } catch (err) {
       alert('删除用户失败')
       console.error('Error deleting user:', err)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -65,6 +73,7 @@ const UserManagement = () => {
   }
 
   const handleSave = async () => {
+    setSaving(true)
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -86,6 +95,8 @@ const UserManagement = () => {
     } catch (err) {
       alert('更新用户失败')
       console.error('Error updating user:', err)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -94,6 +105,7 @@ const UserManagement = () => {
   }
 
   const handleStatusChange = async (userId, newStatus) => {
+    setUpdatingStatus(true)
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -114,10 +126,13 @@ const UserManagement = () => {
     } catch (err) {
       alert('更新用户状态失败')
       console.error('Error updating user status:', err)
+    } finally {
+      setUpdatingStatus(false)
     }
   }
 
   const handleRoleChange = async (userId, newRole) => {
+    setUpdatingRole(true)
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -138,6 +153,8 @@ const UserManagement = () => {
     } catch (err) {
       alert('更新用户角色失败')
       console.error('Error updating user role:', err)
+    } finally {
+      setUpdatingRole(false)
     }
   }
 
@@ -180,7 +197,11 @@ const UserManagement = () => {
   }
 
   if (loading) {
-    return <div className="loading">加载用户列表中...</div>
+    return (
+      <div className="page-loading">
+        <Loading text="正在加载用户列表..." size="large" />
+      </div>
+    )
   }
 
   if (error) {
@@ -232,8 +253,15 @@ const UserManagement = () => {
                   />
                 </div>
                 <div className="form-actions">
-                  <button onClick={handleSave} className="btn-save">保存</button>
-                  <button onClick={handleCancel} className="btn-cancel">取消</button>
+                  <button onClick={handleSave} className="btn-save" disabled={saving}>
+                    {saving ? (
+                      <div className="button-loading">
+                        <Loading text="" size="small" />
+                        <span>保存中...</span>
+                      </div>
+                    ) : '保存'}
+                  </button>
+                  <button onClick={handleCancel} className="btn-cancel" disabled={saving}>取消</button>
                 </div>
               </div>
             ) : (
@@ -259,26 +287,51 @@ const UserManagement = () => {
                       <button
                         onClick={() => handleStatusChange(user.id, user.status === 'active' ? 'inactive' : 'active')}
                         className={`btn-status ${user.status === 'active' ? 'btn-deactivate' : 'btn-activate'}`}
+                        disabled={updatingStatus}
                       >
-                        {user.status === 'active' ? '停用' : '启用'}
+                        {updatingStatus ? (
+                          <div className="button-loading">
+                            <Loading text="" size="small" />
+                            <span>处理中...</span>
+                          </div>
+                        ) : user.status === 'active' ? '停用' : '启用'}
                       </button>
                       {user.role !== 'admin' && (
                         <button
                           onClick={() => handleRoleChange(user.id, 'admin')}
                           className="btn-role"
+                          disabled={updatingRole}
                         >
-                          设为管理员
+                          {updatingRole ? (
+                            <div className="button-loading">
+                              <Loading text="" size="small" />
+                              <span>处理中...</span>
+                            </div>
+                          ) : '设为管理员'}
                         </button>
                       )}
                       {user.role === 'admin' && user.id !== currentUser.id && (
                         <button
                           onClick={() => handleRoleChange(user.id, 'user')}
                           className="btn-role"
+                          disabled={updatingRole}
                         >
-                          取消管理员
+                          {updatingRole ? (
+                            <div className="button-loading">
+                              <Loading text="" size="small" />
+                              <span>处理中...</span>
+                            </div>
+                          ) : '取消管理员'}
                         </button>
                       )}
-                      <button onClick={() => handleDelete(user.id)} className="btn-delete">删除</button>
+                      <button onClick={() => handleDelete(user.id)} className="btn-delete" disabled={deleting}>
+                        {deleting ? (
+                          <div className="button-loading">
+                            <Loading text="" size="small" />
+                            <span>删除中...</span>
+                          </div>
+                        ) : '删除'}
+                      </button>
                     </>
                   )}
                 </div>

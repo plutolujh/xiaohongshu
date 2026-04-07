@@ -77,6 +77,13 @@
   font-size: 18px;
 }
 
+.page-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
 .error {
   text-align: center;
   padding: 100px;

@@ -113,6 +113,20 @@
   background: #e62039;
 }
 
+.button-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+
+.button-loading span {
+  font-size: 16px;
+  color: #fff;
+  font-weight: 500;
+}
+
 .auth-footer {
   margin-top: 24px;
   text-align: center;
