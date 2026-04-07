@@ -2,33 +2,23 @@ services:
   - type: web
     name: xiaohongshu-food-share
     env: node
-    region: singapore
-    plan: free
-    rootDir: .
     buildCommand: npm install && npm run build
     startCommand: npm start
-    buildFilter:
-      paths:
-        - package.json
-        - package-lock.json
-        - src/**/*
-        - server.js
-        - vite.config.js
-      ignoredPaths:
-        - .gitignore
-        - README.md
-        - CHANGELOG.md
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DATABASE_URL
+        value: postgresql://lu_xiaohong_user:YOUR_PASSWORD@dpg-d79o5l15pdvs73bn8jfg-a.oregon-postgres.render.com:5432/lu_xiaohong?sslmode=require
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
       - key: JWT_SECRET
-        generateValue: true
-      - key: PORT
-        value: "3001"
+        sync: false
       - key: FRONTEND_URL
-        value: "https://xiaohongshu-1k78.onrender.com"
-      - key: DB_PATH
-        value: "/var/data/xiaohongshu.db"
-    volumes:
-      - name: data
-        path: /var/data
+        value: https://xiaohongshu-food-share.onrender.com
+    plan: free
+    disk:
+      name: xiaohongshu-data
+      mountPath: /app/data
+      sizeGB: 1
