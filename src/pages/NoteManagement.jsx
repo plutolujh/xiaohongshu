@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentUser } from '../utils/db'
+import Loading from '../components/Loading'
 import './NoteManagement.css'
 
 const NoteManagement = () => {
@@ -9,22 +10,28 @@ const NoteManagement = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
 
   useEffect(() => {
     fetchNotes()
-  }, [])
+  }, [page, pageSize])
 
   const fetchNotes = async () => {
     try {
+      setLoading(true)
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const response = await fetch('/api/notes', {
+      const response = await fetch(`/api/notes?page=${page}&pageSize=${pageSize}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
       const data = await response.json()
       setNotes(data.notes)
+      setTotal(data.total || 0)
       setLoading(false)
     } catch (err) {
       setError('获取笔记列表失败')
@@ -38,6 +45,7 @@ const NoteManagement = () => {
       return
     }
 
+    setDeleting(true)
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -49,13 +57,35 @@ const NoteManagement = () => {
       })
       const data = await response.json()
       if (data.success) {
-        setNotes(notes.filter(note => note.id !== noteId))
+        // 重新加载当前页的笔记
+        await fetchNotes()
       } else {
         alert('删除笔记失败：' + data.message)
       }
     } catch (err) {
       alert('删除笔记失败')
       console.error('Error deleting note:', err)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handlePageSizeChange = (e) => {
+    const newSize = parseInt(e.target.value)
+    setPageSize(newSize)
+    setPage(1)
+  }
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      setPage(page - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    const totalPages = Math.ceil(total / pageSize)
+    if (page < totalPages) {
+      setPage(page + 1)
     }
   }
 
@@ -65,7 +95,11 @@ const NoteManagement = () => {
   )
 
   if (loading) {
-    return <div className="loading">加载笔记列表中...</div>
+    return (
+      <div className="page-loading">
+        <Loading text="正在加载笔记列表..." size="large" />
+      </div>
+    )
   }
 
   if (error) {
@@ -84,6 +118,20 @@ const NoteManagement = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
         />
+        <div className="page-size-selector">
+          <label htmlFor="pageSize">每页显示：</label>
+          <select 
+            id="pageSize" 
+            value={pageSize} 
+            onChange={handlePageSizeChange}
+            className="page-size-select"
+          >
+            <option value={10}>10条</option>
+            <option value={20}>20条</option>
+            <option value={30}>30条</option>
+            <option value={50}>50条</option>
+          </select>
+        </div>
       </div>
 
       <div className="notes-list">
@@ -96,7 +144,12 @@ const NoteManagement = () => {
               <p className="note-likes">点赞数: {note.likes}</p>
               {note.images && note.images.length > 0 && (
                 <div className="note-images">
-                  <img src={note.images[0]} alt={note.title} className="note-image" />
+                  <img 
+                    src={note.images[0]} 
+                    alt={note.title} 
+                    className="note-image" 
+                    loading="lazy"
+                  />
                   {note.images.length > 1 && (
                     <span className="more-images">+{note.images.length - 1}</span>
                   )}
@@ -104,7 +157,14 @@ const NoteManagement = () => {
               )}
             </div>
             <div className="note-actions">
-              <button onClick={() => handleDelete(note.id)} className="btn-delete">删除</button>
+              <button onClick={() => handleDelete(note.id)} className="btn-delete" disabled={deleting}>
+                {deleting ? (
+                  <div className="button-loading">
+                    <Loading text="" size="small" />
+                    <span>删除中...</span>
+                  </div>
+                ) : '删除'}
+              </button>
             </div>
           </div>
         ))}
@@ -112,6 +172,28 @@ const NoteManagement = () => {
 
       {filteredNotes.length === 0 && (
         <div className="no-notes">没有找到笔记</div>
+      )}
+
+      {total > pageSize && (
+        <div className="note-management-pagination">
+          <button 
+            className={`pagination-button ${page === 1 ? 'disabled' : ''}`}
+            onClick={handlePrevPage}
+            disabled={page === 1}
+          >
+            上一页
+          </button>
+          <span className="pagination-info">
+            第 {page} 页，共 {Math.ceil(total / pageSize)} 页
+          </span>
+          <button 
+            className={`pagination-button ${page === Math.ceil(total / pageSize) ? 'disabled' : ''}`}
+            onClick={handleNextPage}
+            disabled={page === Math.ceil(total / pageSize)}
+          >
+            下一页
+          </button>
+        </div>
       )}
     </div>
   )

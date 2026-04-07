@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getHeaders } from '../utils/db'
+import Loading from '../components/Loading'
 import './DatabaseManagement.css'
 
 export default function DatabaseManagement() {
@@ -130,7 +131,9 @@ export default function DatabaseManagement() {
         <div className="tables-list">
           <h2>数据库表</h2>
           {loading && !selectedTable ? (
-            <div className="loading">加载中...</div>
+            <div className="table-loading">
+              <Loading text="正在加载表列表..." size="medium" />
+            </div>
           ) : (
             <ul>
               {tables.map(table => (
@@ -152,7 +155,9 @@ export default function DatabaseManagement() {
             <div>
               <h2>{selectedTable} 表</h2>
               {loading ? (
-                <div className="loading">加载中...</div>
+                <div className="table-loading">
+                  <Loading text="正在加载表数据..." size="medium" />
+                </div>
               ) : tableData ? (
                 <div>
                   <div className="table-rows">
@@ -201,7 +206,12 @@ export default function DatabaseManagement() {
               onClick={executeQuery}
               disabled={loading}
             >
-              {loading ? '执行中...' : '执行'}
+              {loading ? (
+                <div className="button-loading">
+                  <Loading text="" size="small" />
+                  <span>执行中...</span>
+                </div>
+              ) : '执行'}
             </button>
           </div>
 

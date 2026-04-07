@@ -258,6 +258,27 @@
   font-size: 16px;
 }
 
+.page-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
+.button-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+
+.button-loading span {
+  font-size: 14px;
+  color: #fff;
+  font-weight: 500;
+}
+
 @media (max-width: 768px) {
   .user-management-container {
     padding: 10px;

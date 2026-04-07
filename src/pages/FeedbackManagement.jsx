@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import Loading from '../components/Loading'
 import './FeedbackManagement.css'
 
 export default function FeedbackManagement() {
@@ -9,6 +10,7 @@ export default function FeedbackManagement() {
   const [error, setError] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [newStatus, setNewStatus] = useState('')
+  const [updatingStatus, setUpdatingStatus] = useState(false)
 
   useEffect(() => {
     fetchFeedback()
@@ -39,6 +41,7 @@ export default function FeedbackManagement() {
   const handleStatusChange = async (id, status) => {
     setEditingId(id)
     setNewStatus(status)
+    setUpdatingStatus(true)
     
     try {
       const response = await fetch(`/api/feedback/${id}`, {
@@ -59,6 +62,7 @@ export default function FeedbackManagement() {
       setError('网络错误，请稍后重试')
     } finally {
       setEditingId(null)
+      setUpdatingStatus(false)
     }
   }
 
@@ -83,7 +87,11 @@ export default function FeedbackManagement() {
   }
 
   if (loading) {
-    return <div className="feedback-management-loading">加载中...</div>
+    return (
+      <div className="page-loading">
+        <Loading text="正在加载反馈列表..." size="large" />
+      </div>
+    )
   }
 
   return (
@@ -166,7 +174,11 @@ export default function FeedbackManagement() {
                   </td>
                   <td>
                     <div className="status-selector">
-                      {editingId === feedback.id ? (
+                      {updatingStatus && editingId === feedback.id ? (
+                        <div className="status-loading">
+                          <Loading text="" size="small" />
+                        </div>
+                      ) : editingId === feedback.id ? (
                         <select
                           value={newStatus}
                           onChange={(e) => setNewStatus(e.target.value)}

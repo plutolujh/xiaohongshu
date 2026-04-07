@@ -73,6 +73,7 @@ export default function Navbar() {
           <Link to="/changelog" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>修改日志</Link>
           {user ? (
             <>
+              <Link to="/profile" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>个人主页</Link>
               <Link to="/publish" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>发布笔记</Link>
               <Link to="/feedback" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>意见反馈</Link>
               <Link to="/system-status" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>系统状态</Link>

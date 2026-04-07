@@ -14,6 +14,7 @@ import {
 } from 'chart.js'
 import { Line, Bar, Pie } from 'react-chartjs-2'
 import { useAuth } from '../context/AuthContext'
+import Loading from '../components/Loading'
 import './SystemStatus.css'
 
 // 注册Chart.js组件
@@ -199,7 +200,11 @@ const SystemStatus = () => {
   }
 
   if (loading) {
-    return <div className="loading">加载系统状态中...</div>
+    return (
+      <div className="page-loading">
+        <Loading text="正在加载系统状态..." size="large" />
+      </div>
+    )
   }
 
   if (error) {

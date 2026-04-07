@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Loading from '../components/Loading'
 import './Auth.css'
 
 export default function Register() {
@@ -8,6 +9,7 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
 
@@ -15,11 +17,18 @@ export default function Register() {
     e.preventDefault()
     setError('')
 
-    const result = await register(username, password, nickname)
-    if (result.success) {
-      navigate('/')
-    } else {
-      setError(result.message)
+    setLoading(true)
+    try {
+      const result = await register(username, password, nickname)
+      if (result.success) {
+        navigate('/')
+      } else {
+        setError(result.message)
+      }
+    } catch (err) {
+      setError('注册失败，请重试')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -62,8 +71,13 @@ export default function Register() {
             />
           </div>
 
-          <button type="submit" className="auth-button">
-            注册
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? (
+              <div className="button-loading">
+                <Loading text="" size="small" />
+                <span>注册中...</span>
+              </div>
+            ) : '注册'}
           </button>
         </form>
 

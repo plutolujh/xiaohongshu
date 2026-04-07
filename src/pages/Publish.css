@@ -165,6 +165,15 @@
   font-size: 14px;
 }
 
+.publish-success {
+  padding: 12px 16px;
+  background: #f0fff0;
+  border: 1px solid #ccffcc;
+  border-radius: 8px;
+  color: #28a745;
+  font-size: 14px;
+}
+
 .publish-images-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -243,4 +252,24 @@
 
 .publish-button:hover {
   background: #e62039;
+}
+
+.publish-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.button-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+
+.button-loading span {
+  font-size: 16px;
+  color: #fff;
+  font-weight: 500;
 }

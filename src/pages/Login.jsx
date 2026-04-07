@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Loading from '../components/Loading'
 import './Auth.css'
 
 export default function Login() {
@@ -8,6 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -27,17 +29,24 @@ export default function Login() {
     e.preventDefault()
     setError('')
 
-    const result = await login(username, password, remember)
-    if (result.success) {
-      // 如果选择记住我，保存用户名到localStorage
-      if (remember) {
-        localStorage.setItem('xiaohongshu_username', username)
+    setLoading(true)
+    try {
+      const result = await login(username, password, remember)
+      if (result.success) {
+        // 如果选择记住我，保存用户名到localStorage
+        if (remember) {
+          localStorage.setItem('xiaohongshu_username', username)
+        } else {
+          localStorage.removeItem('xiaohongshu_username')
+        }
+        navigate(from, { replace: true })
       } else {
-        localStorage.removeItem('xiaohongshu_username')
+        setError(result.message)
       }
-      navigate(from, { replace: true })
-    } else {
-      setError(result.message)
+    } catch (err) {
+      setError('登录失败，请重试')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -81,8 +90,13 @@ export default function Login() {
             </label>
           </div>
 
-          <button type="submit" className="auth-button">
-            登录
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? (
+              <div className="button-loading">
+                <Loading text="" size="small" />
+                <span>登录中...</span>
+              </div>
+            ) : '登录'}
           </button>
         </form>
 

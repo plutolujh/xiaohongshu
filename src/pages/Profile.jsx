@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getAllNotes, deleteNoteById, updateUser, getHeaders } from '../utils/db'
+import Loading from '../components/Loading'
 import './Profile.css'
 
 export default function Profile() {
@@ -17,15 +18,32 @@ export default function Profile() {
     newPassword: ''
   })
   const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [loadingNotes, setLoadingNotes] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
     if (user) {
-      // 获取用户的笔记
-      getAllNotes().then(result => {
-        const allNotes = result.notes || []
-        setNotes(allNotes.filter(n => n.author_id === user.id))
-      })
+      // 获取用户的笔记（获取所有页数据）
+      const fetchAllNotes = async () => {
+        let allNotes = []
+        let page = 1
+        let hasMore = true
+        
+        while (hasMore) {
+          const result = await getAllNotes(page, 10)
+          const pageNotes = result.notes || []
+          allNotes = [...allNotes, ...pageNotes]
+          hasMore = pageNotes.length === 10
+          page++
+        }
+        
+        // 修复：使用用户的username或id作为过滤条件
+        setNotes(allNotes.filter(n => n.author_id === user.id || n.author_id === user.username))
+        setLoadingNotes(false)
+      }
+      
+      fetchAllNotes()
       
       // 获取用户的意见反馈
       fetch('/api/feedback/me', {
@@ -72,6 +90,7 @@ export default function Profile() {
     e.preventDefault()
     if (!user) return
 
+    setLoading(true)
     try {
       // 更新用户信息
       const userData = { nickname: formData.nickname, avatar: formData.avatar, bio: formData.bio }
@@ -87,6 +106,8 @@ export default function Profile() {
       }
     } catch (error) {
       setMessage('更新失败：' + error.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -94,6 +115,7 @@ export default function Profile() {
     e.preventDefault()
     if (!user) return
 
+    setLoading(true)
     try {
       // 这里需要添加修改密码的API调用
       const result = await fetch('/api/users/' + user.id + '/password', {
@@ -115,6 +137,8 @@ export default function Profile() {
       }
     } catch (error) {
       setMessage('密码修改失败：' + error.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -145,8 +169,10 @@ export default function Profile() {
               <textarea name="bio" value={formData.bio} onChange={handleInputChange} rows={3} />
             </div>
             <div className="profile-form-actions">
-              <button type="submit" className="profile-save">保存</button>
-              <button type="button" onClick={() => setIsEditing(false)} className="profile-cancel">取消</button>
+              <button type="submit" className="profile-save" disabled={loading}>
+                {loading ? '保存中...' : '保存'}
+              </button>
+              <button type="button" onClick={() => setIsEditing(false)} className="profile-cancel" disabled={loading}>取消</button>
             </div>
           </form>
 
@@ -161,7 +187,9 @@ export default function Profile() {
                 <label>新密码</label>
                 <input type="password" name="newPassword" value={formData.newPassword} onChange={handleInputChange} />
               </div>
-              <button type="submit" className="profile-save">修改密码</button>
+              <button type="submit" className="profile-save" disabled={loading}>
+                {loading ? '修改中...' : '修改密码'}
+              </button>
             </form>
           </div>
         </div>
@@ -183,7 +211,11 @@ export default function Profile() {
 
       <div className="profile-notes">
         <h3>我的笔记 ({notes.length})</h3>
-        {notes.length > 0 ? (
+        {loadingNotes ? (
+          <div className="page-loading">
+            <Loading text="正在加载笔记..." size="medium" />
+          </div>
+        ) : notes.length > 0 ? (
           <div className="profile-notes-grid">
             {notes.map(note => {
               const images = note.images || []
