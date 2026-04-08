@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>修改日志 - 美食笔记</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:800px;margin:0 auto;padding:20px;background:#f5f5f5;color:#333;line-height:1.6}
+h1{text-align:center;border-bottom:2px solid #ff2442;padding:15px 0;font-size:28px}
+h2{margin-top:30px;border-left:4px solid #ff2442;padding-left:12px;font-size:22px;color:#1a1a1a}
+h3{margin:20px 0 10px;font-size:18px;color:#333}
+ul,ol{padding-left:24px;margin:10px 0}
+li{margin:6px 0}
+p{margin:10px 0}
+strong{color:#ff2442}
+pre{background:#f8f8f8;padding:12px;border-radius:8px;overflow-x:auto;font-size:13px}
+code{background:#e8e8e8;padding:2px 5px;border-radius:3px;font-size:13px}
+.version{color:#ff2442;font-weight:bold}
+.section{background:#fff;padding:20px;border-radius:12px;margin:15px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.history{margin-top:30px}
+.history li{color:#666}
+a{color:#ff2442;text-decoration:none}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<h1>📝 项目修改日志</h1>
+
+<div class="section">
+<h2 class="version">[1.9.0] - 2026-04-08</h2>
+
+<h3>笔记分享功能</h3>
+<p><strong>功能:</strong> 在笔记详情页添加分享按钮，点击后生成分享图片供用户保存后分享到微信朋友圈</p>
+<p><strong>位置:</strong> NoteDetail.jsx, NoteDetail.css</p>
+<p><strong>实现:</strong></p>
+<ul>
+<li>安装 html2canvas 依赖</li>
+<li>在笔记详情页添加分享按钮</li>
+<li>使用 Canvas API 生成 9:16 竖版分享图片 (375x667)</li>
+<li>实现封面图 cover 模式（等比缩放，避免变形）</li>
+<li>添加渐变遮罩、文字阴影提升可读性</li>
+<li>显示标题、简介、作者、标签、点赞数等信息</li>
+<li>底部添加品牌水印「美食笔记」</li>
+</ul>
+
+<h3>新增依赖</h3>
+<pre><code>html2canvas: ^1.4.1</code></pre>
+
+<h3>修改文件</h3>
+<ul>
+<li>src/pages/NoteDetail.jsx</li>
+<li>src/pages/NoteDetail.css</li>
+<li>package.json</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.8.0] - 2026-04-07</h2>
+<ul>
+<li>系统状态功能仅对管理员可见</li>
+<li>移除修改日志菜单</li>
+<li>首页加载问题修复</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.7.0] - 2026-04-07</h2>
+<ul>
+<li>页脚添加GitHub图标</li>
+<li>版本号更新</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.6.0] - 2026-04-07</h2>
+<ul>
+<li>笔记排序功能 - 按创建时间降序</li>
+<li>每页显示卡片数量设置</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.5.0] - 2026-04-06</h2>
+<ul>
+<li>安全修复: SQL注入、JWT密钥、密码加密</li>
+<li>响应式设计改进</li>
+<li>图片压缩功能</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.4.0] - 2026-04-05</h2>
+<ul>
+<li>笔记发布模板功能</li>
+<li>iPhone HEIC图片支持</li>
+<li>生产环境部署支持</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.3.0] - 2026-04-05</h2>
+<ul>
+<li>个人中心笔记管理</li>
+<li>评论引用回复功能</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.2.0] - 2026-04-05</h2>
+<ul>
+<li>用户角色管理</li>
+<li>管理员权限控制</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.1.0] - 2026-04-05</h2>
+<ul>
+<li>用户管理功能</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.0.0] - 2026-04-04</h2>
+<ul>
+<li>初始版本 - 基础功能</li>
+</ul>
+</div>
+
+<p style="text-align:center;margin-top:30px;color:#999;">© 2026 美食笔记</p>
+</body>
+</html>

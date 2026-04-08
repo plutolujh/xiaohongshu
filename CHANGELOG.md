@@ -1,5 +1,52 @@
 # 项目修改日志
 
+## [1.9.0] - 2026-04-08
+
+### 新增功能
+
+#### 1. 笔记分享功能
+- **功能**: 在笔记详情页添加分享按钮，点击后生成分享图片供用户保存后分享到微信朋友圈
+- **位置**: `NoteDetail.jsx`, `NoteDetail.css`
+- **实现**:
+  - 安装 html2canvas 依赖
+  - 在笔记详情页添加分享按钮
+  - 使用 Canvas API 生成 9:16 竖版分享图片 (375x667)
+  - 实现封面图 cover 模式（等比缩放，避免变形）
+  - 添加渐变遮罩、文字阴影提升可读性
+  - 显示标题、简介、作者、标签、点赞数等信息
+  - 底部添加品牌水印「美食笔记」
+
+- **技术细节 - cover 模式图片缩放**:
+```javascript
+const imgRatio = img.naturalWidth / img.naturalHeight
+const cardRatio = cardWidth / cardHeight  // 9:16 = 0.5625
+
+let sx, sy, sw, sh
+if (imgRatio > cardRatio) {
+  // 图片更宽，以高度为准，裁剪左右
+  sy = 0
+  sh = img.naturalHeight
+  sx = (img.naturalWidth - img.naturalHeight * cardRatio) / 2
+  sw = img.naturalHeight * cardRatio
+} else {
+  // 图片更高，以宽度为准，裁剪上下
+  sx = 0
+  sy = (img.naturalHeight - img.naturalWidth / cardRatio) / 2
+  sw = img.naturalWidth
+  sh = img.naturalWidth / cardRatio
+}
+
+ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cardWidth, cardHeight)
+```
+
+### 新增依赖
+- html2canvas: ^1.4.1
+
+### 修改文件
+- src/pages/NoteDetail.jsx
+- src/pages/NoteDetail.css
+- package.json
+
 ## [1.8.0] - 2026-04-07
 
 ### 权限管理调整
