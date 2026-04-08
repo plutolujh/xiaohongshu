@@ -16,6 +16,7 @@ import NoteManagement from './pages/NoteManagement'
 import Feedback from './pages/Feedback'
 import FeedbackManagement from './pages/FeedbackManagement'
 import DatabaseManagement from './pages/DatabaseManagement'
+import FollowersPage from './pages/FollowersPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import { ThemeProvider } from './context/ThemeContext'
@@ -56,6 +57,28 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/:id"
+              element={
+                <Profile isOtherUser={true} />
+              }
+            />
+            <Route
+              path="/users/:userId/followers"
+              element={
+                <ProtectedRoute>
+                  <FollowersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users/:userId/following"
+              element={
+                <ProtectedRoute>
+                  <FollowersPage />
                 </ProtectedRoute>
               }
             />

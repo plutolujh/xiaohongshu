@@ -1,360 +1,254 @@
+import { useI18n } from '../context/I18nContext'
+import { t } from '../i18n/i18n'
 import './Changelog.css'
 
-const Changelog = () => {
-  // 直接将CHANGELOG.md内容作为字符串
-  const changelog = `# 项目修改日志
-
-## [1.8.0] - 2026-04-07
-
-### 权限管理调整
-
-#### 1. 系统状态功能权限控制
-- **功能**: 系统状态功能仅对管理员可见
-- **位置**: "App.jsx" 路由配置和 "Navbar.jsx" 导航组件
-- **实现**: 
-  - 将系统状态路由的 "ProtectedRoute" 替换为 "AdminRoute"
-  - 将系统状态导航链接移到 "isAdmin &&" 条件判断内部
-  - 同时修改桌面端和移动端菜单
-- **影响**: 普通用户看不到系统状态功能，只有管理员可以访问
-
-### 菜单优化
-
-#### 1. 移除修改日志菜单
-- **功能**: 从导航菜单中移除修改日志选项
-- **位置**: "Navbar.jsx" 导航组件
-- **实现**: 
-  - 移除桌面端导航菜单中的修改日志链接
-  - 移除移动端菜单中的修改日志链接
-- **影响**: 导航菜单更加简洁，用户仍可通过直接访问 "/changelog" 路径查看修改日志
-
-### 稳定性修复
-
-#### 1. 首页加载问题修复
-- **问题**: 首页加载失败，一直显示加载状态
-- **原因**: "Home.jsx" 中的 "loadNotes" 函数缺少错误处理，当API请求失败时 "setLoading(false)" 不会被调用
-- **修复**: 
-  - 在 "loadNotes" 函数中添加 "try-catch-finally" 块
-  - 捕获API请求错误并在控制台输出
-  - 出错时设置空的笔记列表和总数
-  - 使用 "finally" 块确保无论请求成功还是失败，"setLoading(false)" 都会被调用
-- **影响**: 确保页面不会因为API错误而卡住，提升用户体验
-
-## [1.7.0] - 2026-04-07
-
-### 功能添加
-
-#### 1. 首页热门标签排行
-- **功能**: 在首页添加热门标签排行显示
-- **位置**: "Home.jsx" 首页组件
-- **实现**:
-  - 后端添加"GET /api/tags/popular" API端点，按笔记数量排序获取热门标签
-  - 前端首页添加热门标签显示区域
-  - 实现标签按钮的动态生成和样式
-  - 添加标签选择状态管理
-- **影响**: 用户可以看到热门标签排行，快速了解当前热门的美食分类
-
-#### 2. 标签过滤笔记卡片
-- **功能**: 支持根据标签过滤笔记卡片
-- **位置**: "Home.jsx" 首页组件
-- **实现**:
-  - 实现"handleTagFilter"函数，处理标签点击事件
-  - 当选择标签时，调用对应API获取该标签下的笔记
-  - 当选择"全部"时，显示所有笔记
-  - 添加标签按钮的选中状态样式
-- **影响**: 用户可以通过点击标签快速筛选感兴趣的笔记内容
-
-### 技术改进
-- 后端添加热门标签API端点，使用SQL聚合查询计算标签热度
-- 前端优化状态管理，添加"selectedTag"状态
-- 实现标签过滤的API调用逻辑
-- 添加标签按钮的响应式样式
-
-## [1.6.0] - 2026-04-07
-
-### 功能优化
-
-#### 1. 笔记排序功能调整
-- **问题**: 发布的笔记没有按时间排序，最新的笔记未显示在最前面
-- **原因**: 大部分笔记的'created_at'字段为'NULL'，导致'ORDER BY created_at DESC'排序无效
-- **修复**:
-  - 修改后端发布笔记API，当'created_at'为null时自动设置为当前时间
-  - 更新数据库中所有'created_at'为'NULL'的笔记（共11条），为它们设置合理的时间戳
-  - 验证笔记按时间降序正确排序
-- **影响**: 用户可以看到最新发布的笔记显示在最前面，提升内容浏览体验
-
-#### 2. 每页显示卡片数量设置
-- **功能**: 添加每页显示笔记数量的自定义设置
-- **位置**: "Home.jsx" 首页组件
-- **实现**:
-  - 添加下拉选择框，提供10条、20条、30条、50条四个选项
-  - 用户选择后自动重置到第一页
-  - 分页逻辑根据选择的数量动态调整
-  - 添加响应式设计，确保在移动端也能正常显示
-- **影响**: 用户可以根据需要调整每页显示的笔记数量，提升浏览体验
-
-### 技术改进
-- 优化首页组件的状态管理，添加'pageSize'状态
-- 更新分页逻辑，支持动态每页数量
-- 添加选择框样式，包括悬停和焦点状态
-
-## [1.5.0] - 2026-04-06
-
-### 🔒 安全修复（高优先级）
-
-#### 1. SQL注入漏洞修复
-- **问题**: 评论API使用字符串拼接构建SQL查询，存在SQL注入风险
-- **位置**: "server.js" 评论查询接口
-- **修复**: 将字符串拼接改为参数化查询
-- **影响**: 防止恶意用户通过评论ID注入SQL代码
-
-#### 2. JWT密钥安全增强
-- **问题**: JWT密钥使用硬编码的简单默认值，生产环境存在安全隐患
-- **位置**: "server.js" JWT密钥配置
-- **修复**: 
-  - 使用crypto模块生成随机64字节密钥
-  - 生产环境未设置JWT_SECRET时输出警告
-  - 每次启动生成不同的临时密钥
-- **影响**: 提高JWT token的安全性，防止token被破解
-
-#### 3. 密码明文传输修复
-- **问题**: 前端注册时直接发送明文密码到后端
-- **位置**: "AuthContext.jsx" 注册逻辑
-- **修复**: 
-  - 添加专门的注册API ("/api/register")
-  - 后端统一处理密码加密
-  - 前端只发送用户名、密码和昵称
-  - 注册成功后自动登录
-- **影响**: 确保密码在传输和存储过程中的安全性
-
-#### 4. 输入验证增强
-- **问题**: 多个API缺少输入验证，可能导致数据异常
-- **位置**: 多个API接口
-- **修复**: 
-  - 注册API: 验证用户名(3-20字符)、密码(至少6位)、昵称(2-30字符)
-  - 笔记API: 验证标题(不超过100字符)、内容(不超过5000字符)、图片(1-9张)
-  - 评论API: 验证内容(不超过500字符)
-  - 用户更新API: 验证昵称(不超过30字符)、个性签名(不超过200字符)
-- **影响**: 防止无效或恶意数据进入系统
-
-### 📱 响应式设计改进
-
-#### 1. 移动端导航菜单
-- **功能**: 为手机用户提供汉堡菜单
-- **位置**: "Navbar.jsx" 导航组件
-- **实现**: 
-  - 屏幕宽度小于768px时显示菜单按钮
-  - 点击按钮展开/收起导航菜单
-  - 支持所有导航链接和用户操作
-- **影响**: 优化手机用户的导航体验
-
-#### 2. 响应式布局适配
-- **功能**: 适配不同屏幕尺寸
-- **位置**: 多个CSS文件
-- **实现**: 
-  - 首页: 调整网格布局，手机端显示2列卡片
-  - 登录/注册: 调整表单大小和间距
-  - 统一响应式断点: 768px和480px
-- **影响**: 确保在手机、平板和桌面设备上都有良好的显示效果
-
-### 📷 图片功能改进
-
-#### 1. 图片压缩功能
-- **功能**: 上传图片时自动压缩图片大小
-- **位置**: "Publish.jsx" 图片上传处理
-- **实现**: 
-  - 限制图片最大尺寸为 1024x1024
-  - 使用 canvas 进行压缩，质量为 0.8
-  - 自动转换为 JPEG 格式
-- **影响**: 减少图片文件大小，提高上传速度和加载性能
-
-### 📝 其他改进
-- 更新validPaths列表，添加"/register"路径
-- 优化错误提示信息，更加用户友好
-- 统一使用"trim()"处理用户输入，去除首尾空格
-
-### � 系统监控增强
-- **功能**: 系统状态中加入基本的访问统计
-- **位置**: "monitor.js" 监控模块和 "SystemStatus.jsx" 系统状态页面
-- **实现**: 
-  - 按天统计访问量
-  - 按小时统计访问量
-  - 按路径统计访问量
-  - 按请求方法统计
-  - 按状态码统计
-  - 新增访问统计图表（状态码分布、请求方法分布、每日访问量）
-- **影响**: 为管理员提供更详细的系统访问数据，便于分析系统使用情况
-
-## [1.4.0] - 2026-04-05
-
-### 功能添加
-- 笔记发布模板功能
-  - 添加5种预设模板：家常菜、甜品烘焙、快手菜、网红美食、咖啡店打卡
-  - 模板包含预设的标题、描述、食材和做法格式
-  - 使用小红书风格的emoji和排版
-  - 支持一键选择和取消模板
-  - 简化用户发布笔记的输入流程
-
-- 新增咖啡店打卡模板
-  - 包含店名、地址、人均消费等基本信息
-  - 推荐咖啡和甜品清单
-  - 拍照攻略和探店小贴士
-  - 适合分享咖啡店探店体验
-
-- iPhone动态图片格式支持
-  - 支持HEIC/HEIF格式图片上传
-  - 自动将HEIC格式转换为JPEG格式
-  - 支持iPhone Live Photo静态帧提取
-  - 图片大小限制提升至10MB
-  - 使用heic2any库进行格式转换
-
-- 生产环境部署支持
-  - 添加Render部署配置文件
-  - 支持环境变量配置（PORT、JWT_SECRET、NODE_ENV）
-  - 生产环境下自动提供前端静态文件服务
-  - 支持前端路由的通配符处理
-  - 优化package.json依赖配置
-
-### Bug修复
-- 修复Render部署时找不到package.json的问题
-  - 从.gitignore中移除package-lock.json
-  - 生成并提交package-lock.json文件
-  - 添加buildFilter配置指定构建路径
-  - 明确指定使用npm作为包管理器
-  - 在render.yaml中添加rootDir指定项目根目录
-
-### UI优化
-- 添加模板选择器卡片样式
-- 优化模板选择交互体验
-- 模板卡片支持悬停和选中状态显示
-
-## [1.3.0] - 2026-04-05
-
-### 功能添加
-- 个人中心笔记管理增强
-  - 在个人中心添加编辑笔记功能
-  - 优化笔记项的操作按钮布局
-
-- 评论引用回复功能
-  - 添加评论引用回复功能
-  - 支持显示被引用的评论内容和作者
-  - 添加回复按钮，支持快速回复评论
-  - 可以取消回复状态
-
-### 数据库优化
-- 为comments表添加引用回复相关字段
-  - reply_to_id: 被回复的评论ID
-  - reply_to_user_name: 被回复的用户名
-  - reply_to_content: 被回复的评论内容
-- 添加数据库迁移逻辑，自动为现有数据库添加字段
-
-### 其他改进
-- 优化评论表单样式，支持引用回复状态显示
-- 添加引用评论的样式，突出显示被引用内容
-- 优化评论按钮布局，将回复和删除按钮放在一起
-
-## [1.2.0] - 2026-04-05
-
-### 功能添加
-- 实现用户角色和状态管理
-  - 添加用户角色字段（管理员/普通用户）
-  - 添加用户状态字段（启用/停用）
-  - 实现管理员权限验证中间件
-  - 实现用户状态管理功能（启用/停用用户）
-  - 实现用户角色管理功能（设置/取消管理员）
-
-### 安全增强
-- 只有管理员可以访问用户管理页面
-- 只有管理员可以修改其他用户的信息和状态
-- 管理员用户不能被停用或删除
-- 停用的用户无法登录系统
-
-### 其他改进
-- 将用户设置为管理员
-- 优化用户管理页面UI，显示用户角色和状态
-- 添加用户状态和角色徽章样式
-
-## [1.1.0] - 2026-04-05
-
-### 功能添加
-- 实现用户管理功能
-  - 用户列表查看和搜索
-  - 用户信息编辑
-  - 用户删除功能
-  - 用户管理页面UI优化
-
-### 其他改进
-- 在导航栏添加用户管理入口
-- 优化用户管理页面的响应式设计
-
-## [1.0.0] - 2026-04-04
-
-### 功能添加
-- 实现用户注册和登录功能
-- 实现美食笔记发布、编辑、查看功能
-- 实现笔记评论功能
-- 实现个人资料管理功能
-- 添加图片上传和压缩功能
-- 实现分页浏览笔记功能
-- 添加项目修改日志说明文件
-- 实现后端日志记录功能
-- 实现简单的系统状态监控
-
-### 安全增强
-- 实现密码bcrypt加密存储
-- 实现JWT认证机制
-- 修复SQL注入漏洞，使用参数化查询
-- 优化CORS配置，限制为特定域名
-- 添加API请求验证中间件
-
-### 性能优化
-- 实现图片压缩功能，减少存储和带宽使用
-- 实现服务器端分页，减少数据传输
-
-### 其他改进
-- 添加全局错误处理
-- 实现前端错误边界
-- 优化用户界面和用户体验
-
-## [0.1.0] - 2026-04-03
-
-### 初始版本
-- 搭建基础项目结构
-- 实现基本的前端和后端框架
-- 配置数据库和API路由
-- 实现基础的用户认证功能`
-  const loading = false
-
-  // 解析Markdown格式的修改日志
-  const renderChangelog = () => {
-    if (loading) {
-      return <div className="loading">加载中...</div>
-    }
-
-    // 简单的Markdown解析
-    return changelog.split('\n').map((line, index) => {
-      if (line.startsWith('# ')) {
-        return <h1 key={index} className="changelog-title">{line.substring(2)}</h1>
-      } else if (line.startsWith('## ')) {
-        return <h2 key={index} className="changelog-version">{line.substring(3)}</h2>
-      } else if (line.startsWith('### ')) {
-        return <h3 key={index} className="changelog-section">{line.substring(4)}</h3>
-      } else if (line.startsWith('- ')) {
-        return <li key={index} className="changelog-item">{line.substring(2)}</li>
-      } else if (line.trim() === '') {
-        return <br key={index} />
-      } else {
-        return <p key={index} className="changelog-text">{line}</p>
-      }
-    })
-  }
+export default function Changelog() {
+  const { language } = useI18n()
 
   return (
     <div className="changelog-container">
-      <div className="changelog-content">
-        {renderChangelog()}
+      <div className="changelog-header">
+        <h1>{t('changelog.title', language)}</h1>
+        <p className="changelog-date">{t('changelog.generateDate', language)}: 2026-04-08</p>
+        <p className="changelog-project">{t('changelog.project', language)}: 小红书美食分享 (xiaohongshu-food-share)</p>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.overview', language)}</h2>
+        <p>{t('changelog.overviewContent', language)}</p>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.securityFixes', language)}</h2>
+        
+        <div className="changelog-item">
+          <h3>1.1 {t('changelog.idorVulnerability', language)} ({t('changelog.severity', language)}: {t('changelog.severe', language)})</h3>
+          <p><strong>{t('changelog.problem', language)}:</strong> {t('changelog.idorProblem', language)}</p>
+          <p><strong>{t('changelog.fixLocation', language)}:</strong> server.js</p>
+          <p><strong>{t('changelog.fixContent', language)}:</strong></p>
+          <ul>
+            <li>PUT /api/users/:id - {t('changelog.addUserAuth', language)}</li>
+            <li>PUT /api/users/:id/password - {t('changelog.addUserAuth', language)}</li>
+            <li>PUT /api/notes/:id - {t('changelog.addNoteAuthorAuth', language)}</li>
+            <li>DELETE /api/notes/:id - {t('changelog.addNoteAuthorAuth', language)}</li>
+            <li>DELETE /api/comments/:id - {t('changelog.addCommentAuthorAuth', language)}</li>
+          </ul>
+          <pre className="code-block">{'// ' + t('changelog.fixExample', language) + '\nconst currentUserId = req.user.userId\nconst targetUserId = req.params.id\nif (currentUserId !== targetUserId) {\n  return res.status(403).json({ success: false, message: \'' + t('changelog.noPermission', language) + '\' })\n}'}</pre>
+        </div>
+
+        <div className="changelog-item">
+          <h3>1.2 {t('changelog.rateLimiting', language)} ({t('changelog.severity', language)}: {t('changelog.high', language)})</h3>
+          <p><strong>{t('changelog.problem', language)}:</strong> {t('changelog.rateLimitProblem', language)}</p>
+          <p><strong>{t('changelog.fix', language)}:</strong></p>
+          <ul>
+            <li>{t('changelog.installRateLimit', language)} express-rate-limit {t('changelog.dependency', language)}</li>
+            <li>{t('changelog.addGeneralLimiter', language)}: {t('changelog.generalLimiterDesc', language)}</li>
+            <li>{t('changelog.addAuthLimiter', language)}: {t('changelog.authLimiterDesc', language)}</li>
+          </ul>
+          <p><strong>{t('changelog.fixLocation', language)}:</strong> server.js:182-199</p>
+          <pre className="code-block">{`const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { success: false, message: '${t('changelog.rateLimitMessage', language)}' }
+})
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: '${t('changelog.rateLimitMessage', language)}' }
+})`}</pre>
+        </div>
+
+        <div className="changelog-item">
+          <h3>1.3 CORS {t('changelog.security', language)} ({t('changelog.severity', language)}: {t('changelog.high', language)})</h3>
+          <p><strong>{t('changelog.problem', language)}:</strong> {t('changelog.corsProblem', language)}</p>
+          <p><strong>{t('changelog.fixLocation', language)}:</strong> server.js:163-177</p>
+          <p><strong>{t('changelog.fixContent', language)}:</strong></p>
+          <ul>
+            <li>{t('changelog.corsFixContent1', language)}</li>
+            <li>{t('changelog.corsFixContent2', language)}</li>
+          </ul>
+          <pre className="code-block">{`const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL]
+    : []  // ${t('changelog.corsProductionNote', language)}
+  : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3003']
+
+if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
+  console.error('${t('changelog.corsErrorMessage', language)}')
+}`}</pre>
+        </div>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.dataPerformance', language)}</h2>
+        
+        <div className="changelog-item">
+          <h3>2.1 {t('changelog.databaseIndex', language)} ({t('changelog.severity', language)}: {t('changelog.high', language)})</h3>
+          <p><strong>{t('changelog.problem', language)}:</strong> {t('changelog.dbIndexProblem', language)}</p>
+          <p><strong>{t('changelog.fixLocation', language)}:</strong> server.js:351-360</p>
+          <p><strong>{t('changelog.fixContent', language)}:</strong> {t('changelog.dbIndexFixContent', language)}</p>
+          <pre className="code-block">{`CREATE INDEX idx_notes_author_id ON notes(author_id)
+CREATE INDEX idx_notes_created_at ON notes(created_at DESC)
+CREATE INDEX idx_comments_note_id ON comments(note_id)
+CREATE INDEX idx_comments_user_id ON comments(user_id)
+CREATE INDEX idx_feedback_user_id ON feedback(user_id)
+CREATE INDEX idx_note_tags_note_id ON note_tags(note_id)
+CREATE INDEX idx_note_tags_tag_id ON note_tags(tag_id)`}</pre>
+        </div>
+
+        <div className="changelog-item">
+          <h3>2.2 {t('changelog.paginationLimit', language)} ({t('changelog.severity', language)}: {t('changelog.high', language)})</h3>
+          <p><strong>{t('changelog.problem', language)}:</strong> {t('changelog.paginationProblem', language)}</p>
+          <p><strong>{t('changelog.fixLocation', language)}:</strong> server.js:683-685</p>
+          <pre className="code-block">{`let limit = parseInt(req.query.limit) || 10
+limit = Math.min(Math.max(limit, 1), 100)`}</pre>
+        </div>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.errorHandling', language)}</h2>
+        
+        <div className="changelog-item">
+          <h3>3.1 API {t('changelog.silentFailure', language)} ({t('changelog.severity', language)}: {t('changelog.medium', language)})</h3>
+          <p><strong>{t('changelog.problem', language)}:</strong> {t('changelog.silentFailureProblem', language)}</p>
+          <p><strong>{t('changelog.fixLocation', language)}:</strong> server.js:708,1168</p>
+          <pre className="code-block">{`// ${t('changelog.beforeFix', language)}
+res.json({ notes: [], total: 0, page, limit })
+
+// ${t('changelog.afterFix', language)}
+res.status(500).json({ success: false, message: e.message, notes: [], total: 0, page, limit })`}</pre>
+        </div>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.configEncryption', language)}</h2>
+        
+        <div className="changelog-item">
+          <h3>4.1 bcrypt {t('changelog.rounds', language)} ({t('changelog.severity', language)}: {t('changelog.medium', language)})</h3>
+          <p><strong>{t('changelog.problem', language)}:</strong> bcrypt {t('changelog.roundsProblem', language)}</p>
+          <p><strong>{t('changelog.fix', language)}:</strong> {t('changelog.roundsFix', language)}</p>
+        </div>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.productionConfig', language)}</h2>
+        
+        <div className="changelog-item">
+          <h3>5.1 {t('changelog.productionTemplate', language)}</h3>
+          <p><strong>{t('changelog.newFile', language)}:</strong> .env.production</p>
+          <pre className="code-block">{`# ${t('changelog.productionTemplate', language)}
+NODE_ENV=production
+PORT=3004
+FRONTEND_URL=https://your-domain.com
+JWT_SECRET=your-secure-jwt-secret-key-here
+DATABASE_URL=postgresql://user:password@host:port/database`}</pre>
+        </div>
+
+        <div className="changelog-item">
+          <h3>5.2 PM2 {t('changelog.processManagement', language)}</h3>
+          <p><strong>{t('changelog.newFile', language)}:</strong> ecosystem.config.js</p>
+          <p><strong>{t('changelog.features', language)}:</strong></p>
+          <ul>
+            <li>{t('changelog.multiProcessLoadBalance', language)}</li>
+            <li>{t('changelog.autoRestart', language)}</li>
+            <li>{t('changelog.logRotation', language)} (7{t('changelog.days', language)}, 10MB)</li>
+            <li>{t('changelog.memoryLimit', language)} (500MB)</li>
+          </ul>
+          <p><strong>{t('changelog.newNpmScripts', language)}:</strong></p>
+          <ul>
+            <li>pm2:start - {t('changelog.start', language)}</li>
+            <li>pm2:stop - {t('changelog.stop', language)}</li>
+            <li>pm2:restart - {t('changelog.restart', language)}</li>
+            <li>pm2:logs - {t('changelog.viewLogs', language)}</li>
+            <li>pm2:monit - {t('changelog.realtimeMonitor', language)}</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.newDependencies', language)}</h2>
+        <pre className="code-block">{`{
+  "dependencies": {
+    "express-rate-limit": "^8.3.2"
+  },
+  "devDependencies": {
+    "pm2": "^6.0.14"
+  }
+}`}</pre>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.checklist', language)}</h2>
+        
+        <h3>{t('changelog.preLaunchConfig', language)}</h3>
+        <ul className="checklist">
+          <li><input type="checkbox" readOnly /> {t('changelog.copyEnvProduction', language)}</li>
+          <li><input type="checkbox" readOnly /> {t('changelog.setFrontendUrl', language)}</li>
+          <li><input type="checkbox" readOnly /> {t('changelog.generateJwtSecret', language)} (openssl rand -hex 64)</li>
+          <li><input type="checkbox" readOnly /> {t('changelog.configDatabaseUrl', language)}</li>
+          <li><input type="checkbox" readOnly /> {t('changelog.buildFrontend', language)}</li>
+        </ul>
+
+        <h3>{t('changelog.verificationSteps', language)}</h3>
+        <ol>
+          <li>{t('changelog.startBackend', language)}: npm run server {t('changelog.or', language)} npm run pm2:start</li>
+          <li>{t('changelog.checkCorsWarning', language)}</li>
+          <li>{t('changelog.testRateLimit', language)}</li>
+          <li>{t('changelog.verifyIdor', language)}</li>
+          <li>{t('changelog.checkDbIndex', language)}</li>
+        </ol>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.optimization', language)}</h2>
+        <ul>
+          <li>{t('changelog.tokenExpiry', language)} ({t('changelog.current', language)} 7 {t('changelog.days', language)}, {t('changelog.suggest', language)} 2 {t('changelog.hours', language)})</li>
+          <li>{t('changelog.addHttps', language)}</li>
+          <li>{t('changelog.userEnumProtection', language)}</li>
+          <li>{t('changelog.frontendErrorDisplay', language)}</li>
+        </ul>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.modifiedFiles', language)}</h2>
+        <table className="file-table">
+          <thead>
+            <tr>
+              <th>{t('changelog.file', language)}</th>
+              <th>{t('changelog.operation', language)}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>server.js</td>
+              <td>{t('changelog.modify', language)}</td>
+            </tr>
+            <tr>
+              <td>package.json</td>
+              <td>{t('changelog.modify', language)}</td>
+            </tr>
+            <tr>
+              <td>.env.production</td>
+              <td>{t('changelog.add', language)}</td>
+            </tr>
+            <tr>
+              <td>ecosystem.config.js</td>
+              <td>{t('changelog.add', language)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="changelog-section">
+        <h2>{t('changelog.rollback', language)}</h2>
+        <p>{t('changelog.rollbackDesc', language)}:</p>
+        <pre className="code-block">{`git checkout -- server.js package.json
+git checkout HEAD -- .
+# ${t('changelog.removeNewDeps', language)}
+npm uninstall express-rate-limit
+npm uninstall -D pm2`}</pre>
       </div>
     </div>
   )
 }
-
-export default Changelog

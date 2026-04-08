@@ -1,5 +1,5 @@
 // 使用相对路径，适配不同环境
-const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3004/api'
+const API_BASE = '/api'
 
 // 获取token
 function getToken() {
@@ -41,6 +41,20 @@ export async function findUserByUsername(username) {
   return res.json()
 }
 
+export async function getUserById(id) {
+  const res = await fetch(`${API_BASE}/user/${id}`, {
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+export async function getUserTags(userId) {
+  const res = await fetch(`${API_BASE}/user/${userId}/tags`, {
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
 export async function findUserById(id) {
   const users = await getAllUsers()
   return users.find(u => u.id === id)
@@ -56,8 +70,12 @@ export async function updateUser(id, userData) {
 }
 
 // 笔记操作
-export async function getAllNotes(page = 1, limit = 10) {
-  const res = await fetch(`${API_BASE}/notes?page=${page}&limit=${limit}`, {
+export async function getAllNotes(page = 1, limit = 10, authorId = null) {
+  let url = `${API_BASE}/notes?page=${page}&limit=${limit}`
+  if (authorId) {
+    url += `&author=${authorId}`
+  }
+  const res = await fetch(url, {
     headers: getHeaders()
   })
   return res.json()
@@ -123,6 +141,75 @@ export async function createComment(comment) {
 export async function deleteCommentById(id) {
   const res = await fetch(`${API_BASE}/comments/${id}`, {
     method: 'DELETE',
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+// 关注功能
+export async function followUser(userId) {
+  const res = await fetch(`${API_BASE}/users/${userId}/follow`, {
+    method: 'POST',
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+export async function unfollowUser(userId) {
+  const res = await fetch(`${API_BASE}/users/${userId}/follow`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+export async function getFollowers(userId, page = 1, limit = 20) {
+  const res = await fetch(`${API_BASE}/users/${userId}/followers?page=${page}&limit=${limit}`, {
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+export async function getFollowing(userId, page = 1, limit = 20) {
+  const res = await fetch(`${API_BASE}/users/${userId}/following?page=${page}&limit=${limit}`, {
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+export async function getFollowStatus(userId, targetId) {
+  const res = await fetch(`${API_BASE}/users/${userId}/follow-status/${targetId}`, {
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+export async function getFollowCounts(userId) {
+  const res = await fetch(`${API_BASE}/users/${userId}/follow-counts`)
+  return res.json()
+}
+
+// 点赞笔记
+export async function likeNote(noteId) {
+  const res = await fetch(`${API_BASE}/notes/${noteId}/like`, {
+    method: 'POST',
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+// 取消点赞笔记
+export async function unlikeNote(noteId) {
+  const res = await fetch(`${API_BASE}/notes/${noteId}/like`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  return res.json()
+}
+
+// 获取笔记点赞状态
+export async function getNoteLikeStatus(noteId) {
+  const res = await fetch(`${API_BASE}/notes/${noteId}/like-status`, {
     headers: getHeaders()
   })
   return res.json()

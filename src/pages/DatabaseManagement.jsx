@@ -15,6 +15,12 @@ export default function DatabaseManagement() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [dbInfo, setDbInfo] = useState(null)
+  // 新增：表结构和备份功能
+  const [tableStructure, setTableStructure] = useState(null)
+  const [showStructure, setShowStructure] = useState(false)
+  const [backupData, setBackupData] = useState(null)
+  const [showBackup, setShowBackup] = useState(false)
+  const [includeData, setIncludeData] = useState(true)
 
   useEffect(() => {
     loadDbInfo()
@@ -43,7 +49,7 @@ export default function DatabaseManagement() {
       })
       const data = await res.json()
       if (data.success) {
-        setTables(data.data.map(table => table.name))
+        setTables(data.data)
       } else {
         setError(data.message)
       }
@@ -66,6 +72,9 @@ export default function DatabaseManagement() {
         setTableData(data.data)
         setQueryResult(null)
         setError('')
+        // 每次切换表时清除结构查看
+        setShowStructure(false)
+        setTableStructure(null)
       } else {
         setError(data.message)
       }
@@ -74,6 +83,64 @@ export default function DatabaseManagement() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // 加载表结构
+  const loadTableStructure = async (tableName) => {
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/db/table/${tableName}/structure`, {
+        headers: getHeaders()
+      })
+      const data = await res.json()
+      if (data.success) {
+        setTableStructure(data.data)
+        setShowStructure(true)
+        setError('')
+      } else {
+        setError(data.message)
+      }
+    } catch (err) {
+      setError('加载表结构失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 生成数据库备份
+  const generateBackup = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/db/backup?includeData=${includeData}`, {
+        headers: getHeaders()
+      })
+      const data = await res.json()
+      if (data.success) {
+        setBackupData(data.data.backup)
+        setShowBackup(true)
+        setError('')
+      } else {
+        setError(data.message)
+      }
+    } catch (err) {
+      setError('生成备份失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 下载备份文件
+  const downloadBackup = () => {
+    if (!backupData) return
+    const blob = new Blob([backupData], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `database_backup_${new Date().toISOString().slice(0, 10)}.sql`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const executeQuery = async () => {
@@ -133,6 +200,15 @@ export default function DatabaseManagement() {
         {/* 表列表 */}
         <div className="tables-list">
           <h2>数据库表</h2>
+          <div className="backup-section">
+            <button
+              className="backup-btn"
+              onClick={generateBackup}
+              disabled={loading}
+            >
+              备份数据库
+            </button>
+          </div>
           {loading && !selectedTable ? (
             <div className="table-loading">
               <Loading text="正在加载表列表..." size="medium" />
@@ -140,12 +216,27 @@ export default function DatabaseManagement() {
           ) : (
             <ul>
               {tables.map(table => (
-                <li 
-                  key={table} 
-                  className={selectedTable === table ? 'active' : ''}
-                  onClick={() => loadTableData(table)}
+                <li
+                  key={table.name}
+                  className={selectedTable === table.name ? 'active' : ''}
+                  onClick={() => loadTableData(table.name)}
                 >
-                  {table}
+                  <div className="table-info">
+                    <span className="table-name">{table.name}</span>
+                    <div className="table-stats">
+                      <span className="table-count">{table.count} 行</span>
+                      <span className="table-size">{table.size}</span>
+                    </div>
+                    <button
+                      className="structure-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        loadTableStructure(table.name)
+                      }}
+                    >
+                      结构
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -156,7 +247,47 @@ export default function DatabaseManagement() {
         <div className="table-data">
           {selectedTable && (
             <div>
-              <h2>{selectedTable} 表</h2>
+              <div className="table-header">
+                <h2>{selectedTable} 表</h2>
+              </div>
+
+              {/* 表结构显示 */}
+              {showStructure && tableStructure && (
+                <div className="table-structure">
+                  <h3>表结构</h3>
+                  {tableStructure.primaryKeys && tableStructure.primaryKeys.length > 0 && (
+                    <div className="primary-keys">
+                      <strong>主键:</strong> {tableStructure.primaryKeys.join(', ')}
+                    </div>
+                  )}
+                  <table className="structure-table">
+                    <thead>
+                      <tr>
+                        <th>列名</th>
+                        <th>类型</th>
+                        <th>可空</th>
+                        <th>默认值</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableStructure.columns.map((col, index) => (
+                        <tr key={index}>
+                          <td>
+                            {tableStructure.primaryKeys && tableStructure.primaryKeys.includes(col.column_name) && (
+                              <span className="pk-badge">PK</span>
+                            )}
+                            {col.column_name}
+                          </td>
+                          <td>{col.data_type}</td>
+                          <td>{col.is_nullable === 'YES' ? '是' : '否'}</td>
+                          <td>{col.column_default || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               {loading ? (
                 <div className="table-loading">
                   <Loading text="正在加载表数据..." size="medium" />
@@ -249,6 +380,47 @@ export default function DatabaseManagement() {
           )}
         </div>
       </div>
+
+      {/* 备份弹窗 */}
+      {showBackup && (
+        <div className="backup-modal">
+          <div className="backup-modal-content">
+            <div className="backup-modal-header">
+              <h2>数据库备份</h2>
+              <button className="close-btn" onClick={() => setShowBackup(false)}>×</button>
+            </div>
+            <div className="backup-options">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={includeData}
+                  onChange={(e) => setIncludeData(e.target.checked)}
+                />
+                包含数据
+              </label>
+              <button
+                className="regenerate-btn"
+                onClick={generateBackup}
+                disabled={loading}
+              >
+                重新生成
+              </button>
+            </div>
+            <div className="backup-preview">
+              <textarea
+                value={backupData}
+                readOnly
+                rows={20}
+              />
+            </div>
+            <div className="backup-actions">
+              <button className="download-btn" onClick={downloadBackup}>
+                下载 SQL 文件
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

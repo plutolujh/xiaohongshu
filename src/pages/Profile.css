@@ -34,6 +34,71 @@
   margin: 0;
 }
 
+.profile-follow-counts {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.profile-follow-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.profile-follow-link:hover {
+  color: #ff4757;
+}
+
+.profile-follow-num {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.profile-follow-label {
+  font-size: 12px;
+  color: #999;
+}
+
+.profile-tags {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-tags-label {
+  font-size: 12px;
+  color: #999;
+}
+
+.profile-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.profile-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #f5f5f5;
+  color: #666;
+  border-radius: 12px;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.profile-tag:hover {
+  background: #e8f4f8;
+  color: #1890ff;
+  cursor: pointer;
+}
+
 .profile-actions {
   display: flex;
   justify-content: center;
