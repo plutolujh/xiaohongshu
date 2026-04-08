@@ -40,6 +40,25 @@ const SystemStatus = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // 格式化字节为可读大小
+  const formatBytes = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B'
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+    const value = bytes / Math.pow(1024, i)
+    return `${value.toFixed(2)} ${units[i]}`
+  }
+
+  // 格式化运行时间
+  const formatUptime = (seconds) => {
+    const days = Math.floor(seconds / 86400)
+    const hours = Math.floor((seconds % 86400) / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    if (days > 0) return `${days}天 ${hours}小时`
+    if (hours > 0) return `${hours}小时 ${mins}分钟`
+    return `${mins}分钟`
+  }
+
   // 定期获取系统状态数据
   useEffect(() => {
     const fetchStatus = async () => {
@@ -104,6 +123,29 @@ const SystemStatus = () => {
         borderColor: 'rgba(54, 162, 235, 1)',
         backgroundColor: 'rgba(54, 162, 235, 0.2)',
         tension: 0.4
+      }
+    ]
+  }
+
+  // 硬盘使用图表数据
+  const diskData = {
+    labels: ['已用空间', '可用空间'],
+    datasets: [
+      {
+        label: '硬盘使用情况',
+        data: status ? [
+          status?.system?.usedDisk || 0,
+          status?.system?.freeDisk || 0
+        ] : [0, 0],
+        backgroundColor: [
+          'rgba(255, 159, 64, 0.7)',
+          'rgba(75, 192, 192, 0.7)'
+        ],
+        borderColor: [
+          'rgba(255, 159, 64, 1)',
+          'rgba(75, 192, 192, 1)'
+        ],
+        borderWidth: 1
       }
     ]
   }
@@ -221,52 +263,83 @@ const SystemStatus = () => {
       <div className="status-cards">
         <div className="status-card">
           <h3>服务器信息</h3>
-          <p>运行时间: {Math.round(status?.server?.uptime || 0)} 秒</p>
-          <p>Node版本: {status?.server?.nodeVersion || '未知'}</p>
-          <p>项目版本: {status?.version || '1.0.0'}</p>
+          <p>运行时间: <span className="value">{formatUptime(status?.server?.uptime || 0)}</span></p>
+          <p>Node版本: <span className="value">{status?.server?.nodeVersion || '-'}</span></p>
+          <p>版本: <span className="value">{status?.version || '-'}</span></p>
         </div>
-        
+
         <div className="status-card">
           <h3>系统信息</h3>
-          <p>平台: {status?.system?.platform || '未知'}</p>
-          <p>架构: {status?.system?.arch || '未知'}</p>
-          <p>CPU核心数: {status?.system?.cpuCount || 0}</p>
+          <p>平台: <span className="value">{status?.system?.platform || '-'}</span></p>
+          <p>架构: <span className="value">{status?.system?.arch || '-'}</span></p>
+          <p>CPU核心: <span className="value">{status?.system?.cpuCount || 0}</span></p>
         </div>
-        
+
         <div className="status-card">
           <h3>进程信息</h3>
-          <p>内存使用: {(status?.process?.memoryUsage || 0).toFixed(2)} MB</p>
-          <p>进程运行时间: {Math.round(status?.process?.uptime || 0)} 秒</p>
+          <p>内存: <span className="value">{(status?.process?.memoryUsage || 0).toFixed(1)} MB</span></p>
+          <p>运行: <span className="value">{formatUptime(status?.process?.uptime || 0)}</span></p>
         </div>
-        
+
+        <div className="status-card">
+          <h3>存储空间</h3>
+          <p>总容量: <span className="value">{formatBytes(status?.system?.totalDisk || 0)}</span></p>
+          <p>已用: <span className="value">{formatBytes(status?.system?.usedDisk || 0)}</span></p>
+          <p>可用: <span className="value">{formatBytes(status?.system?.freeDisk || 0)}</span></p>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${status?.system?.diskUsagePercent || 0}%` }}></div>
+          </div>
+          <p className="progress-text">使用率: {status?.system?.diskUsagePercent || 0}%</p>
+        </div>
+
+        <div className="status-card">
+          <h3>数据库</h3>
+          <p>总记录: <span className="value">{formatBytes(status?.database?.totalSize || 0)}</span></p>
+          <table className="data-table">
+            <thead>
+              <tr><th>表名</th><th>记录数</th></tr>
+            </thead>
+            <tbody>
+              {status?.database?.tables ? Object.entries(status.database.tables).map(([name, count]) => (
+                <tr key={name}><td>{name}</td><td>{count}</td></tr>
+              )) : <tr><td colSpan={2}>无数据</td></tr>}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="status-card">
+          <h3>项目文件</h3>
+          <p>总大小: <span className="value">{formatBytes(status?.project?.totalSize || 0)}</span></p>
+          <p>文件数: <span className="value">{status?.project?.fileCount || 0}</span></p>
+        </div>
+
         <div className="status-card">
           <h3>请求统计</h3>
-          <p>总请求数: {status?.requests?.total || 0}</p>
-          <p>错误数: {status?.requests?.errors || 0}</p>
-        </div>
-        
-        <div className="status-card">
-          <h3>访问统计</h3>
-          <p>今日访问: {(status?.accessStats?.daily?.[new Date().toISOString().split('T')[0]] || 0)}</p>
-          <p>方法数: {Object.keys(status?.accessStats?.methodStats || {}).length}</p>
-          <p>路径数: {Object.keys(status?.accessStats?.pathStats || {}).length}</p>
+          <p>总请求: <span className="value">{status?.requests?.total || 0}</span></p>
+          <p>错误: <span className="value">{status?.requests?.errors || 0}</span></p>
+          <p>今日: <span className="value">{status?.accessStats?.daily?.[new Date().toISOString().split('T')[0]] || 0}</span></p>
         </div>
       </div>
       
       {status && (
         <div className="charts-container">
           <div className="chart-item">
+            <h3>存储使用情况</h3>
+            <Pie data={diskData} options={chartOptions}/>
+          </div>
+
+          <div className="chart-item">
             <h3>内存使用情况</h3>
             <Pie data={memoryData} options={chartOptions}/>
           </div>
-          
+
           <div className="chart-item">
             <h3>CPU负载</h3>
             <Line data={cpuData} options={chartOptions}/>
           </div>
-          
+
           <div className="chart-item">
-            <h3>请求统计</h3>
+            <h3>📊 请求统计</h3>
             <Bar data={requestData} options={chartOptions}/>
           </div>
           

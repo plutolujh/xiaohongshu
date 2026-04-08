@@ -8,7 +8,7 @@ export default function Footer() {
   const { themeMode, setTheme, ThemeMode } = useTheme()
   const { language } = useI18n()
   const [appInfo, setAppInfo] = useState({
-    version: '1.8.0',
+    version: '1.9.0',
     lastPublishTime: new Date().toLocaleString()
   })
 
@@ -18,7 +18,7 @@ export default function Footer() {
       try {
         // 注意：这里需要认证，所以在非登录状态下可能会失败
         // 失败时使用默认值
-        const response = await fetch('/api/status')
+        const response = await fetch(`/api/status`)
         if (response.ok) {
           const data = await response.json()
           if (data.success && data.status) {

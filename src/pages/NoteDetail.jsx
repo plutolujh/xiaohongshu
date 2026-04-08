@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import { findNoteById, updateNote, getCommentsByNoteId, createComment, deleteCommentById, getNoteTags } from '../utils/db'
+import { useState, useEffect, useRef } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { findNoteById, updateNote, getCommentsByNoteId, createComment, deleteCommentById, getNoteTags, likeNote, unlikeNote, getNoteLikeStatus } from '../utils/db'
 import { useAuth } from '../context/AuthContext'
 import Loading from '../components/Loading'
+import html2canvas from 'html2canvas'
 import './NoteDetail.css'
 
 export default function NoteDetail() {
@@ -16,6 +17,9 @@ export default function NoteDetail() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(-1)
   const [rotation, setRotation] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [liked, setLiked] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const shareContentRef = useRef(null)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -24,19 +28,211 @@ export default function NoteDetail() {
       findNoteById(id).then(setNote)
       getCommentsByNoteId(id).then(setComments)
       getNoteTags(id).then(setTags)
+      // 获取点赞状态
+      if (user) {
+        getNoteLikeStatus(id).then(result => {
+          setLiked(result.liked || false)
+        }).catch(() => {})
+      }
     }
-  }, [id])
+  }, [id, user])
 
   const handleLike = async () => {
-    if (!note) return
-    const newLiked = !note.liked
-    const updatedNote = {
-      ...note,
-      liked: newLiked,
-      likes: newLiked ? note.likes + 1 : note.likes - 1
+    if (!note || !user) {
+      // 未登录时提示登录
+      alert('请先登录后再点赞')
+      return
     }
-    await updateNote(updatedNote)
-    setNote(updatedNote)
+
+    try {
+      if (liked) {
+        // 取消点赞
+        await unlikeNote(note.id)
+        setLiked(false)
+        setNote({ ...note, likes: Math.max(0, (note.likes || 0) - 1) })
+      } else {
+        // 点赞
+        await likeNote(note.id)
+        setLiked(true)
+        setNote({ ...note, likes: (note.likes || 0) + 1 })
+      }
+    } catch (error) {
+      console.error('点赞操作失败:', error)
+      alert('操作失败，请稍后重试')
+    }
+  }
+
+  const handleShare = async () => {
+    if (!note) return
+
+    setSharing(true)
+    try {
+      // 获取笔记信息
+      const coverImage = images[0] || ''
+      const title = note.title || '笔记分享'
+      const content = (note.content || '').substring(0, 100) + (note.content && note.content.length > 100 ? '...' : '')
+      const authorName = note.author_name || '匿名'
+      const likes = note.likes || 0
+      const displayTags = tags.slice(0, 3).map(t => t.name).join(' · ')
+
+      // 创建Canvas - 9:16 竖版
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const cardWidth = 375
+      const cardHeight = 667
+      canvas.width = cardWidth
+      canvas.height = cardHeight
+
+      // 绘制深色渐变背景
+      const gradient = ctx.createLinearGradient(0, 0, cardWidth, cardHeight)
+      gradient.addColorStop(0, '#1a1a2e')
+      gradient.addColorStop(1, '#16213e')
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, cardWidth, cardHeight)
+
+      // 如果有封面图，绘制封面
+      if (coverImage) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        await new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = resolve
+          img.src = coverImage
+        })
+
+        if (img.complete && img.naturalWidth > 0) {
+          // 计算 cover 模式: 填充整个区域，等比缩放
+          const imgRatio = img.naturalWidth / img.naturalHeight
+          const cardRatio = cardWidth / cardHeight
+
+          let sx, sy, sw, sh, dx, dy, dw, dh
+          if (imgRatio > cardRatio) {
+            // 图片更宽，以高度为准
+            dw = cardWidth
+            dh = cardHeight
+            sy = 0
+            sh = img.naturalHeight
+            sx = (img.naturalWidth - img.naturalHeight * cardRatio) / 2
+            sw = img.naturalHeight * cardRatio
+          } else {
+            // 图片更高，以宽度为准
+            dw = cardWidth
+            dh = cardWidth / imgRatio
+            sx = 0
+            sy = (img.naturalHeight - img.naturalWidth / cardRatio) / 2
+            sw = img.naturalWidth
+            sh = img.naturalWidth / cardRatio
+          }
+
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cardWidth, cardHeight)
+        }
+      }
+
+      // 绘制渐变遮罩
+      const maskGradient = ctx.createLinearGradient(0, cardHeight * 0.3, 0, cardHeight)
+      maskGradient.addColorStop(0, 'rgba(0,0,0,0.1)')
+      maskGradient.addColorStop(0.6, 'rgba(0,0,0,0.5)')
+      maskGradient.addColorStop(1, 'rgba(0,0,0,0.8)')
+      ctx.fillStyle = maskGradient
+      ctx.fillRect(0, 0, cardWidth, cardHeight)
+
+      // 绘制标题
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif'
+      ctx.textAlign = 'left'
+      wrapText(ctx, title, 24, 180, cardWidth - 48, 34)
+
+      // 绘制简介
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'
+      ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif'
+      wrapText(ctx, content, 24, 280, cardWidth - 48, 20)
+
+      // 绘制作者信息
+      const authorY = cardHeight - 160
+      const authorImg = new Image()
+      authorImg.crossOrigin = 'anonymous'
+      authorImg.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${note.author_id}`
+      await new Promise(resolve => {
+        authorImg.onload = resolve
+        authorImg.onerror = resolve
+      })
+      if (authorImg.complete && authorImg.naturalWidth > 0) {
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(48, authorY, 20, 0, Math.PI * 2)
+        ctx.closePath()
+        ctx.clip()
+        ctx.drawImage(authorImg, 28, authorY - 20, 40, 40)
+        ctx.restore()
+      }
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '600 15px -apple-system, BlinkMacSystemFont, sans-serif'
+      ctx.fillText(authorName, 78, authorY + 5)
+
+      // 绘制标签
+      if (displayTags) {
+        ctx.fillStyle = 'rgba(255,255,255,0.8)'
+        ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif'
+        ctx.fillText('🏷️ ' + displayTags, 24, authorY + 35)
+      }
+
+      // 绘制底部信息栏
+      const bottomGradient = ctx.createLinearGradient(0, cardHeight - 80, 0, cardHeight)
+      bottomGradient.addColorStop(0, 'rgba(0,0,0,0)')
+      bottomGradient.addColorStop(1, 'rgba(0,0,0,0.6)')
+      ctx.fillStyle = bottomGradient
+      ctx.fillRect(0, cardHeight - 80, cardWidth, 80)
+
+      // 绘制点赞
+      ctx.font = '20px sans-serif'
+      ctx.fillText('❤️', 24, cardHeight - 40)
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '600 14px -apple-system, BlinkMacSystemFont, sans-serif'
+      ctx.fillText(likes.toString(), 54, cardHeight - 40)
+
+      // 绘制品牌
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif'
+      ctx.textAlign = 'right'
+      ctx.fillText('🍜 美食笔记', cardWidth - 24, cardHeight - 45)
+      ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif'
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'
+      ctx.fillText('分享美食，记录生活', cardWidth - 24, cardHeight - 26)
+
+      // 下载图片
+      const link = document.createElement('a')
+      link.download = `笔记分享-${title}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+
+      alert('分享图片已生成，请保存后分享到朋友圈~')
+    } catch (error) {
+      console.error('生成分享图片失败:', error)
+      alert('生成分享图片失败，请稍后重试')
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  // 辅助函数：自动换行绘制文本
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split('')
+    let line = ''
+    let currentY = y
+
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i]
+      const metrics = ctx.measureText(testLine)
+
+      if (metrics.width > maxWidth && i > 0) {
+        ctx.fillText(line, x, currentY)
+        line = words[i]
+        currentY += lineHeight
+      } else {
+        line = testLine
+      }
+    }
+    ctx.fillText(line, x, currentY)
   }
 
   const handleComment = async (e) => {
@@ -165,10 +361,17 @@ export default function NoteDetail() {
             <h1>{note.title}</h1>
             <div className="note-detail-actions">
               <button
-                className={`note-detail-like ${note.liked ? 'liked' : ''}`}
+                className={`note-detail-like ${liked ? 'liked' : ''}`}
                 onClick={handleLike}
               >
-                {note.liked ? '❤️' : '🤍'} {note.likes}
+                {liked ? '❤️' : '🤍'} {note.likes || 0}
+              </button>
+              <button
+                className="note-detail-share"
+                onClick={handleShare}
+                disabled={sharing}
+              >
+                {sharing ? '生成中...' : '📤 分享'}
               </button>
               {user && user.id === note.author_id && (
                 <button
@@ -185,10 +388,17 @@ export default function NoteDetail() {
             <img
               src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${note.author_id}`}
               alt={note.author_name}
-              className="note-detail-avatar"
+              className="note-detail-avatar clickable-avatar"
+              onClick={() => navigate(`/profile/${note.author_id}`)}
+              title="点击查看作者主页"
             />
             <div className="note-detail-author-info">
-              <span className="note-detail-author-name">{note.author_name}</span>
+              <span
+                className="note-detail-author-name clickable-name"
+                onClick={() => navigate(`/profile/${note.author_id}`)}
+              >
+                {note.author_name}
+              </span>
               <span className="note-detail-date">{formatDate(note.created_at)}</span>
             </div>
           </div>
@@ -334,15 +544,16 @@ export default function NoteDetail() {
               🔄
             </button>
             
-            <img 
-              src={selectedImage} 
-              alt="预览" 
+            <img
+              src={selectedImage}
+              alt="预览"
               className="image-modal-img"
               style={{ transform: `rotate(${rotation}deg)` }}
             />
           </div>
         </div>
       )}
+
     </div>
   )
 }

@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getAllNotes, deleteNoteById, updateUser, getHeaders } from '../utils/db'
+import { getAllNotes, deleteNoteById, updateUser, getHeaders, getFollowCounts, getUserTags } from '../utils/db'
 import Loading from '../components/Loading'
+import FollowButton from '../components/FollowButton'
 import './Profile.css'
 
-export default function Profile() {
+export default function Profile({ isOtherUser = false, userId: propUserId }) {
   const { user, logout, refreshUser } = useAuth()
+  const params = useParams()
+  const urlUserId = params.id
+  // 优先使用 prop传入的 userId，否则使用 URL 参数
+  const effectiveUserId = propUserId || urlUserId
+  const [targetUser, setTargetUser] = useState(null)
   const [notes, setNotes] = useState([])
   const [feedback, setFeedback] = useState([])
   const [isEditing, setIsEditing] = useState(false)
@@ -20,16 +26,61 @@ export default function Profile() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingNotes, setLoadingNotes] = useState(true)
+  const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
+  const [userTags, setUserTags] = useState([])
+  const [loadingUser, setLoadingUser] = useState(isOtherUser)
   const navigate = useNavigate()
 
+  // 确定显示哪个用户的信息
+  const displayUser = isOtherUser ? targetUser : user
+
   useEffect(() => {
-    if (user) {
+    if (isOtherUser && effectiveUserId) {
+      setLoadingUser(true)
+      // 获取其他用户信息 - 使用 /api/user/:id (根据ID查询)
+      fetch(`/api/user/${effectiveUserId}`, { headers: getHeaders() })
+        .then(res => res.json())
+        .then(data => {
+          if (data) setTargetUser(data)
+          setLoadingUser(false)
+        })
+        .catch(() => setLoadingUser(false))
+    }
+  }, [isOtherUser, effectiveUserId])
+
+  useEffect(() => {
+    const fetchFollowCounts = async () => {
+      const uid = isOtherUser ? effectiveUserId : user?.id
+      if (!uid) return
+      const result = await getFollowCounts(uid)
+      if (result.success) {
+        setFollowCounts(result.data)
+      }
+    }
+    fetchFollowCounts()
+  }, [isOtherUser, effectiveUserId, user])
+
+  useEffect(() => {
+    const fetchUserTags = async () => {
+      const uid = isOtherUser ? effectiveUserId : user?.id
+      if (!uid) return
+      const result = await getUserTags(uid)
+      if (Array.isArray(result)) {
+        setUserTags(result)
+      }
+    }
+    fetchUserTags()
+  }, [isOtherUser, effectiveUserId, user])
+
+  useEffect(() => {
+    const userToFetch = displayUser
+    if (userToFetch) {
       // 获取用户的笔记（获取所有页数据）
       const fetchAllNotes = async () => {
         let allNotes = []
         let page = 1
         let hasMore = true
-        
+
         while (hasMore) {
           const result = await getAllNotes(page, 10)
           const pageNotes = result.notes || []
@@ -37,28 +88,30 @@ export default function Profile() {
           hasMore = pageNotes.length === 10
           page++
         }
-        
-        // 修复：使用用户的username或id作为过滤条件
-        setNotes(allNotes.filter(n => n.author_id === user.id || n.author_id === user.username))
+
+        // 过滤当前用户的笔记
+        setNotes(allNotes.filter(n => n.author_id === userToFetch.id || n.author_id === userToFetch.username))
         setLoadingNotes(false)
       }
-      
+
       fetchAllNotes()
-      
-      // 获取用户的意见反馈
-      fetch('/api/feedback/me', {
-        headers: {
-          'Authorization': `Bearer ${user.token}`
-        }
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (Array.isArray(result)) {
-          setFeedback(result)
-        }
-      })
+
+      // 获取用户的意见反馈（仅自己的 profile）
+      if (!isOtherUser && user) {
+        fetch('/api/feedback/me', {
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
+        })
+        .then(response => response.json())
+        .then(result => {
+          if (Array.isArray(result)) {
+            setFeedback(result)
+          }
+        })
+      }
     }
-  }, [user])
+  }, [displayUser, isOtherUser])
 
   const handleLogout = () => {
     logout()
@@ -142,8 +195,25 @@ export default function Profile() {
     }
   }
 
-  if (!user) {
+  // 非登录用户查看自己资料时需要登录，但查看他人资料不需要
+  if (!user && !isOtherUser) {
     return <div className="profile"><div className="profile-empty">请先登录</div></div>
+  }
+
+  // 查看其他用户资料时，如果还没加载完成，显示 loading
+  if (isOtherUser && loadingUser && !targetUser) {
+    return (
+      <div className="profile">
+        <div className="page-loading">
+          <Loading text="正在加载用户资料..." size="large" />
+        </div>
+      </div>
+    )
+  }
+
+  // 查看其他用户资料时，如果没有获取到用户信息
+  if (isOtherUser && !targetUser) {
+    return <div className="profile"><div className="profile-empty">用户不存在</div></div>
   }
 
   return (
@@ -196,21 +266,51 @@ export default function Profile() {
       ) : (
         <>
           <div className="profile-header">
-            <img src={user.avatar} alt={user.nickname} className="profile-avatar" />
-            <h2 className="profile-nickname">{user.nickname}</h2>
-            <p className="profile-username">@{user.username}</p>
-            {user.bio && <p className="profile-bio">{user.bio}</p>}
+            <img src={displayUser.avatar} alt={displayUser.nickname} className="profile-avatar" />
+            <h2 className="profile-nickname">{displayUser.nickname}</h2>
+            <p className="profile-username">@{displayUser.username}</p>
+            {displayUser.bio && <p className="profile-bio">{displayUser.bio}</p>}
+
+            {/* 关注/粉丝数量 */}
+            <div className="profile-follow-counts">
+              <Link to={`/users/${displayUser.id}/following`} className="profile-follow-link">
+                <span className="profile-follow-num">{followCounts.following}</span>
+                <span className="profile-follow-label">关注</span>
+              </Link>
+              <Link to={`/users/${displayUser.id}/followers`} className="profile-follow-link">
+                <span className="profile-follow-num">{followCounts.followers}</span>
+                <span className="profile-follow-label">粉丝</span>
+              </Link>
+            </div>
+
+            {/* 喜欢的标签 */}
+            {userTags.length > 0 && (
+              <div className="profile-tags">
+                <span className="profile-tags-label">喜欢的标签</span>
+                <div className="profile-tags-list">
+                  {userTags.map(tag => (
+                    <span key={tag.id} className="profile-tag">{tag.name}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="profile-actions">
-            <button onClick={() => setIsEditing(true)} className="profile-edit-btn">编辑资料</button>
-            <button onClick={handleLogout} className="profile-logout">退出登录</button>
+            {isOtherUser ? (
+              <FollowButton userId={displayUser.id} size="large" />
+            ) : (
+              <>
+                <button onClick={() => setIsEditing(true)} className="profile-edit-btn">编辑资料</button>
+                <button onClick={handleLogout} className="profile-logout">退出登录</button>
+              </>
+            )}
           </div>
         </>
       )}
 
       <div className="profile-notes">
-        <h3>我的笔记 ({notes.length})</h3>
+        <h3>{isOtherUser ? 'TA的笔记' : '我的笔记'} ({notes.length})</h3>
         {loadingNotes ? (
           <div className="page-loading">
             <Loading text="正在加载笔记..." size="medium" />
@@ -247,6 +347,8 @@ export default function Profile() {
         )}
       </div>
 
+      {/* 只有查看自己的资料时才显示意见反馈 */}
+      {!isOtherUser && (
       <div className="profile-feedback">
         <h3>我的意见反馈 ({feedback.length})</h3>
         {feedback.length > 0 ? (
@@ -291,6 +393,7 @@ export default function Profile() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

@@ -75,11 +75,11 @@
 }
 
 .tables-list li {
-  padding: 8px 12px;
   margin-bottom: 5px;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
+  overflow: hidden;
 }
 
 .tables-list li:hover {
@@ -89,6 +89,130 @@
 .tables-list li.active {
   background-color: #007bff;
   color: white;
+}
+
+.table-info {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.table-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.table-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.tables-list li.active .table-stats {
+  opacity: 0.9;
+}
+
+.table-count {
+  color: inherit;
+}
+
+.table-size {
+  color: inherit;
+  font-style: italic;
+}
+
+.structure-btn {
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.structure-btn:hover {
+  background-color: #5a6268;
+}
+
+.tables-list li.active .structure-btn {
+  background-color: #5a6268;
+}
+
+.tables-list li.active .structure-btn:hover {
+  background-color: #4a5258;
+}
+
+.backup-section {
+  margin-bottom: 15px;
+}
+
+.backup-btn {
+  width: 100%;
+  padding: 10px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.backup-btn:hover {
+  background-color: #218838;
+}
+
+.backup-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.table-header h2 {
+  margin: 0;
+}
+
+.table-structure {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.table-structure h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.primary-keys {
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #666;
+}
+
+.pk-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: #ffc107;
+  color: #333;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 3px;
+  margin-right: 6px;
 }
 
 .table-data {
@@ -262,12 +386,140 @@
   .database-content {
     grid-template-columns: 1fr;
   }
-  
+
   .query-input {
     flex-direction: column;
   }
-  
+
   .execute-btn {
     align-self: stretch;
   }
+}
+
+/* 备份弹窗样式 */
+.backup-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.backup-modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.backup-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.backup-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.backup-options {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.backup-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+}
+
+.regenerate-btn {
+  padding: 6px 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.regenerate-btn:hover {
+  background-color: #0069d9;
+}
+
+.regenerate-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.backup-preview {
+  flex: 1;
+  padding: 15px 20px;
+  overflow: auto;
+}
+
+.backup-preview textarea {
+  width: 100%;
+  height: 300px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  resize: none;
+}
+
+.backup-actions {
+  padding: 15px 20px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.download-btn {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.download-btn:hover {
+  background-color: #218838;
 }

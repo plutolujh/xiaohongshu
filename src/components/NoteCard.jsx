@@ -1,7 +1,14 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { likeNote, unlikeNote } from '../utils/db'
+import { useAuth } from '../context/AuthContext'
+import FollowButton from './FollowButton'
 import './NoteCard.css'
 
-export default function NoteCard({ note }) {
+export default function NoteCard({ note, onNoteUpdate }) {
+  const [localNote, setLocalNote] = useState(note)
+  const { user } = useAuth()
+
   const formatDate = (dateString) => {
     if (!dateString) return ''
     const date = new Date(dateString)
@@ -15,22 +22,60 @@ export default function NoteCard({ note }) {
     return date.toLocaleDateString('zh-CN')
   }
 
-  // 支持多图：使用 images 数组
-  const images = note.images || []
-  const coverImage = images[0]
+  // 支持多图：优先使用 coverImage，否则兼容旧的 images 数组
+  const coverImage = localNote.coverImage || localNote.images?.[0] || null
+  const images = localNote.images || []
 
   // 兼容旧数据
-  const authorId = note.author_id || note.authorId || ''
-  const authorName = note.author_name || note.authorName || ''
-  const likes = note.likes || 0
-  const title = note.title || ''
-  const content = note.content || ''
+  const authorId = localNote.author_id || localNote.authorId || ''
+  const authorName = localNote.author_name || localNote.authorName || ''
+  const likes = localNote.likes || 0
+  const title = localNote.title || ''
+  // 列表接口不再返回 content，详情页才返回，所以这里不显示描述
+  // 使用传入的 liked 状态，如果没有则使用本地存储的点赞时间判断
+  const [isLiked, setIsLiked] = useState(false)
+
+  useEffect(() => {
+    // 从 localStorage 读取点赞状态作为初始值
+    const lastLikeKey = `note_liked_${localNote.id}`
+    const liked = localStorage.getItem(lastLikeKey)
+    setIsLiked(liked === 'true')
+  }, [localNote.id])
+
+  const handleLike = async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!user) {
+      alert('请先登录后再点赞')
+      return
+    }
+
+    try {
+      if (isLiked) {
+        await unlikeNote(localNote.id)
+        setIsLiked(false)
+        setLocalNote({ ...localNote, likes: Math.max(0, likes - 1) })
+        localStorage.setItem(`note_liked_${localNote.id}`, 'false')
+      } else {
+        await likeNote(localNote.id)
+        setIsLiked(true)
+        setLocalNote({ ...localNote, likes: likes + 1 })
+        localStorage.setItem(`note_liked_${localNote.id}`, 'true')
+      }
+      if (onNoteUpdate) {
+        onNoteUpdate({ ...localNote, likes: isLiked ? Math.max(0, likes - 1) : likes + 1 })
+      }
+    } catch (error) {
+      console.error('点赞失败:', error)
+    }
+  }
 
   return (
-    <Link to={`/note/${note.id}`} className="note-card">
+    <Link to={`/note/${localNote.id}`} className="note-card">
       <div className="note-card-image">
-        <img src={coverImage} alt={title} />
-        {images.length > 1 && (
+        <img src={coverImage} alt={title} loading="lazy" />
+        {(images?.length || 0) > 1 && (
           <div className="note-card-more">
             <span>{images.length}</span>
           </div>
@@ -38,7 +83,6 @@ export default function NoteCard({ note }) {
       </div>
       <div className="note-card-content">
         <h3 className="note-card-title">{title}</h3>
-        <p className="note-card-desc">{content}</p>
         <div className="note-card-footer">
           <div className="note-card-author">
             <img
@@ -47,10 +91,16 @@ export default function NoteCard({ note }) {
               className="note-card-avatar"
             />
             <span className="note-card-username">{authorName}</span>
+            <FollowButton userId={authorId} size="small" showText={false} />
           </div>
           <div className="note-card-info">
-            <span className="note-card-likes">❤️ {likes}</span>
-            <span className="note-card-date">{formatDate(note.created_at)}</span>
+            <button 
+              className={`note-card-like ${isLiked ? 'liked' : ''}`}
+              onClick={handleLike}
+            >
+              {isLiked ? '❤️' : '🤍'} {likes}
+            </button>
+            <span className="note-card-date">{formatDate(localNote.created_at)}</span>
           </div>
         </div>
       </div>

@@ -249,15 +249,54 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
 
 .note-detail-like:hover {
   background: #f0f0f0;
+  transform: scale(1.05);
 }
 
 .note-detail-like.liked {
   background: #fff0f0;
   color: #ff2442;
+  animation: like-pulse 0.6s ease-in-out;
+}
+
+.note-detail-like.liked::before {
+  content: '❤️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 24px;
+  opacity: 0;
+  animation: like-burst 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes like-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes like-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
 }
 
 .note-detail-edit {
@@ -607,4 +646,42 @@
   padding: 24px;
   color: #999;
   font-size: 14px;
+}
+
+/* 点击作者头像/名字 */
+.clickable-avatar,
+.clickable-name {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.clickable-avatar:hover,
+.clickable-name:hover {
+  opacity: 0.8;
+}
+
+/* 分享按钮 */
+.note-detail-share {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.note-detail-share:hover {
+  background: #e8f4f8;
+  color: #1890ff;
+}
+
+.note-detail-share:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

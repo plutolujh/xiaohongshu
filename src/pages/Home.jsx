@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { getAllNotes, getHeaders } from '../utils/db'
 import NoteCard from '../components/NoteCard'
 import Loading from '../components/Loading'
@@ -8,24 +9,67 @@ import './Home.css'
 
 export default function Home() {
   const { language } = useI18n()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const authorId = searchParams.get('author')
   const [notes, setNotes] = useState([])
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [pageSize, setPageSize] = useState(10)
   const [popularTags, setPopularTags] = useState([])
   const [selectedTag, setSelectedTag] = useState('')
   const [tagsLoading, setTagsLoading] = useState(false)
-  
+  const [infiniteScroll, setInfiniteScroll] = useState(false)
+  const loaderRef = useRef(null)
+
   useEffect(() => {
     loadNotes()
     loadPopularTags()
-  }, [page, pageSize])
+  }, [page, pageSize, authorId])
+
+  // 无限滚动：使用 IntersectionObserver 检测滚动到底部
+  useEffect(() => {
+    if (!infiniteScroll) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && notes.length < total) {
+          loadMoreNotes()
+        }
+      },
+      { rootMargin: '400px' }
+    )
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [infiniteScroll, loadingMore, total, notes.length])
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const loadMoreNotes = useCallback(async () => {
+    if (loadingMore || notes.length >= total) return
+    setLoadingMore(true)
+    try {
+      const nextPage = page + 1
+      const result = await getAllNotes(nextPage, pageSize, authorId)
+      setNotes(prev => [...prev, ...result.notes])
+      setPage(nextPage)
+      setTotal(result.total)
+    } catch (err) {
+      console.error('Error loading more notes:', err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [loadingMore, notes.length, total, page, pageSize, authorId])
 
   const loadNotes = async () => {
     setLoading(true)
     try {
-      const result = await getAllNotes(page, pageSize)
+      const result = await getAllNotes(page, pageSize, authorId)
       setNotes(result.notes)
       setTotal(result.total)
     } catch (err) {
@@ -40,7 +84,7 @@ export default function Home() {
   const loadPopularTags = async () => {
     setTagsLoading(true)
     try {
-      const tags = await fetch(`${process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3004/api'}/tags/popular?limit=10`, {
+      const tags = await fetch(`/api/tags/popular?limit=10`, {
         headers: getHeaders()
       })
       .then(response => response.json())
@@ -61,7 +105,7 @@ export default function Home() {
       setSelectedTag(tagId)
       try {
         setLoading(true)
-        const data = await fetch(`${process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3004/api'}/tags/${tagId}/notes?page=1&limit=${pageSize}`, {
+        const data = await fetch(`/api/tags/${tagId}/notes?page=1&limit=${pageSize}`, {
           headers: getHeaders()
         })
         .then(response => response.json())
@@ -96,9 +140,17 @@ export default function Home() {
   }
 
   const totalPages = Math.ceil(total / pageSize)
-  
+
   return (
     <div className="home">
+      {authorId && (
+        <div className="home-author-filter">
+          <span>正在查看: </span>
+          <button onClick={() => navigate('/')} className="clear-author-filter">
+            清除过滤
+          </button>
+        </div>
+      )}
       <div className="home-header">
         <h1>{t('home.title', language)}</h1>
         <p>{t('home.subtitle', language)}</p>
@@ -150,7 +202,7 @@ export default function Home() {
           </select>
         </div>
       </div>
-      <div className="notes-grid">
+      <div className="notes-grid" ref={loaderRef}>
         {loading ? (
           <div className="page-loading">
             <Loading text={t('home.loading', language)} size="large" />
@@ -165,7 +217,12 @@ export default function Home() {
           </div>
         )}
       </div>
-      {total > pageSize && (
+      {loadingMore && (
+        <div className="loading-more">
+          <Loading text={t('home.loadingMore', language)} size="small" />
+        </div>
+      )}
+      {!infiniteScroll && total > pageSize && (
         <div className="home-pagination">
           <button 
             className={`pagination-button ${page === 1 ? 'disabled' : ''}`}

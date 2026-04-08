@@ -1,5 +1,6 @@
 // 系统状态监控模块
 import os from 'os'
+import fs from 'fs'
 
 // 监控数据
 const monitorData = {
@@ -16,8 +17,63 @@ const monitorData = {
   }
 }
 
+// 获取硬盘空间信息
+function getDiskInfo() {
+  try {
+    const stats = fs.statfsSync(process.cwd())
+    const total = stats.bsize * stats.blocks
+    const free = stats.bsize * stats.bfree
+    const used = total - free
+    const usagePercent = total > 0 ? ((used / total) * 100).toFixed(1) : 0
+
+    return {
+      total: total,
+      free: free,
+      used: used,
+      usagePercent: parseFloat(usagePercent)
+    }
+  } catch (e) {
+    return { total: 0, free: 0, used: 0, usagePercent: 0 }
+  }
+}
+
+// 获取项目文件大小
+function getProjectSize(dirPath) {
+  let totalSize = 0
+  let fileCount = 0
+
+  function walkDir(path) {
+    try {
+      const items = fs.readdirSync(path)
+      for (const item of items) {
+        if (item === 'node_modules' || item === '.git' || item === 'dist' || item === 'logs') continue
+        const fullPath = `${path}/${item}`
+        try {
+          const stat = fs.statSync(fullPath)
+          if (stat.isDirectory()) {
+            walkDir(fullPath)
+          } else {
+            totalSize += stat.size
+            fileCount++
+          }
+        } catch (e) {
+          // 跳过无法访问的文件
+        }
+      }
+    } catch (e) {
+      // 跳过无法读取的目录
+    }
+  }
+
+  walkDir(dirPath)
+  return { totalSize, fileCount }
+}
+
 // 收集系统状态信息
 function collectSystemStatus() {
+  const diskInfo = getDiskInfo()
+  const projectInfo = getProjectSize(process.cwd())
+
   return {
     // 服务器信息
     server: {
@@ -31,13 +87,25 @@ function collectSystemStatus() {
       totalMemory: os.totalmem() / 1024 / 1024, // MB
       freeMemory: os.freemem() / 1024 / 1024, // MB
       cpuUsage: os.loadavg(),
-      cpuCount: os.cpus().length
+      cpuCount: os.cpus().length,
+      // 硬盘信息
+      totalDisk: diskInfo.total,
+      freeDisk: diskInfo.free,
+      usedDisk: diskInfo.used,
+      diskUsagePercent: diskInfo.usagePercent
     },
     // 进程信息
     process: {
       memoryUsage: process.memoryUsage().heapUsed / 1024 / 1024, // MB
       uptime: process.uptime()
     },
+    // 项目信息
+    project: {
+      totalSize: projectInfo.totalSize,
+      fileCount: projectInfo.fileCount
+    },
+    // 数据库信息 (由 server.js 填充)
+    database: null,
     // 请求统计
     requests: {
       total: monitorData.requestCount,
@@ -46,6 +114,11 @@ function collectSystemStatus() {
     // 访问统计
     accessStats: monitorData.accessStats
   }
+}
+
+// 更新数据库统计
+function updateDatabaseStats(stats) {
+  monitorData.databaseStats = stats
 }
 
 // 增加请求计数
@@ -101,5 +174,6 @@ export default {
   collectSystemStatus,
   incrementRequestCount,
   incrementErrorCount,
-  recordAccessInfo
+  recordAccessInfo,
+  updateDatabaseStats
 }
