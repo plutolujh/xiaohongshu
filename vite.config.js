@@ -6,7 +6,10 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    allowedHosts: true, // 允许所有主机，更灵活的配置
+    allowedHosts: true,
+    mimeTypes: {
+      '.md': 'text/markdown; charset=utf-8'
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3004',
@@ -15,4 +18,8 @@ export default defineConfig({
       }
     }
   },
+  optimizeDeps: {
+    include: []
+  },
+  assetsInclude: ['**/*.md'],
 });
