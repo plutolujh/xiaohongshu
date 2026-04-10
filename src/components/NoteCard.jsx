@@ -26,6 +26,8 @@ export default function NoteCard({ note, onNoteUpdate }) {
   const coverImage = localNote.coverImage || localNote.images?.[0] || null
   // 从coverImage创建单元素数组，确保即使后端只返回coverImage也能正确显示
   const images = localNote.images || (coverImage ? [coverImage] : [])
+  // 使用后端返回的图片数量，如果没有则使用本地计算的数量
+  const imagesCount = localNote.imagesCount || images.length
 
   // 兼容旧数据
   const authorId = localNote.author_id || localNote.authorId || ''
@@ -90,9 +92,9 @@ export default function NoteCard({ note, onNoteUpdate }) {
             <span>📷</span>
           </div>
         )}
-        {(images.length > 9) && (
+        {(imagesCount > 1) && (
           <div className="note-card-more">
-            <span>+{images.length - 9}</span>
+            <span>{imagesCount}</span>
           </div>
         )}
       </div>
