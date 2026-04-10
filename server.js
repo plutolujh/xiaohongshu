@@ -79,10 +79,13 @@ const pool = new Pool(dbConfig)
 // 测试数据库连接
 pool.connect((err, client, release) => {
   if (err) {
-    return console.error('Error connecting to database', err.stack)
+    console.error('Error connecting to database:', err.stack)
+    console.log('Starting server without database connection...')
+    // 不退出进程，继续启动服务器
+  } else {
+    console.log('Successfully connected to PostgreSQL database')
+    release()
   }
-  console.log('Successfully connected to PostgreSQL database')
-  release()
 })
 
 // JWT验证中间件
@@ -255,6 +258,11 @@ app.use((err, req, res, next) => {
     path: req.path
   })
   res.status(500).json({ success: false, message: '服务器内部错误' })
+})
+
+// 健康检查API
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, message: 'Server is running' })
 })
 
 // 初始化数据库
@@ -1430,348 +1438,359 @@ app.put('/api/feedback/:id', authenticateToken, async (req, res) => {
 })
 
 // 启动服务器
-  initDb().then(() => {
-    // 标签API
-    app.get('/api/tags', async (req, res) => {
-      try {
-        const result = await query('SELECT * FROM tags ORDER BY name')
-        const tags = result.rows.map(row => ({
-          id: row.id,
-          name: row.name,
-          created_at: row.created_at
-        }))
-        res.json(tags)
-      } catch (e) {
-        res.json([])
-      }
-    })
+// 标签API
+app.get('/api/tags', async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM tags ORDER BY name')
+    const tags = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      created_at: row.created_at
+    }))
+    res.json(tags)
+  } catch (e) {
+    res.json([])
+  }
+})
 
-    app.get('/api/tags/popular', async (req, res) => {
-      try {
-        const limit = parseInt(req.query.limit) || 10
-        const result = await query(
-          `SELECT t.id, t.name, COUNT(nt.note_id) as note_count
-           FROM tags t
-           LEFT JOIN note_tags nt ON t.id = nt.tag_id
-           GROUP BY t.id, t.name
-           ORDER BY note_count DESC, t.name ASC
-           LIMIT $1`,
-          [limit]
-        )
-        const tags = result.rows.map(row => ({
-          id: row.id,
-          name: row.name,
-          note_count: parseInt(row.note_count) || 0
-        }))
-        res.json(tags)
-      } catch (e) {
-        res.json([])
-      }
-    })
+app.get('/api/tags/popular', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10
+    const result = await query(
+      `SELECT t.id, t.name, COUNT(nt.note_id) as note_count
+       FROM tags t
+       LEFT JOIN note_tags nt ON t.id = nt.tag_id
+       GROUP BY t.id, t.name
+       ORDER BY note_count DESC, t.name ASC
+       LIMIT $1`,
+      [limit]
+    )
+    const tags = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      note_count: parseInt(row.note_count) || 0
+    }))
+    res.json(tags)
+  } catch (e) {
+    res.json([])
+  }
+})
 
-    app.post('/api/tags', authenticateToken, async (req, res) => {
-      const { name } = req.body
-      
-      try {
-        if (!name || name.trim().length === 0) {
-          return res.json({ success: false, message: '标签名称不能为空' })
-        }
-        
-        if (name.length > 20) {
-          return res.json({ success: false, message: '标签名称长度不能超过20个字符' })
-        }
-        
-        const id = crypto.randomUUID()
-        const created_at = new Date().toISOString()
-        
-        await query(
-          'INSERT INTO tags (id, name, created_at) VALUES ($1, $2, $3)',
-          [id, name.trim(), created_at]
-        )
-        
-        res.json({ success: true, tag: { id, name: name.trim(), created_at } })
-      } catch (e) {
-        res.json({ success: false, message: e.message })
-      }
-    })
-
-    app.get('/api/notes/:id/tags', async (req, res) => {
-      try {
-        const result = await query(
-          `SELECT t.id, t.name 
-           FROM tags t 
-           JOIN note_tags nt ON t.id = nt.tag_id 
-           WHERE nt.note_id = $1 
-           ORDER BY t.name`,
-          [req.params.id]
-        )
-        const tags = result.rows.map(row => ({
-          id: row.id,
-          name: row.name
-        }))
-        res.json(tags)
-      } catch (e) {
-        res.json([])
-      }
-    })
-
-    app.post('/api/notes/:id/tags', authenticateToken, async (req, res) => {
-      const { tagIds } = req.body
-      
-      try {
-        // 先删除该笔记的所有标签关联
-        await query('DELETE FROM note_tags WHERE note_id = $1', [req.params.id])
-        
-        // 添加新的标签关联
-        for (const tagId of tagIds) {
-          const id = crypto.randomUUID()
-          await query(
-            'INSERT INTO note_tags (id, note_id, tag_id) VALUES ($1, $2, $3)',
-            [id, req.params.id, tagId]
-          )
-        }
-        
-        res.json({ success: true })
-      } catch (e) {
-        res.json({ success: false, message: e.message })
-      }
-    })
-
-    app.get('/api/tags/:id/notes', async (req, res) => {
-      const page = parseInt(req.query.page) || 1
-      const limit = parseInt(req.query.limit) || 10
-      const offset = (page - 1) * limit
-      
-      try {
-        // 获取总数
-        const countResult = await query(
-          `SELECT COUNT(DISTINCT nt.note_id) as count 
-           FROM note_tags nt 
-           WHERE nt.tag_id = $1`,
-          [req.params.id]
-        )
-        const total = parseInt(countResult.rows[0].count) || 0
-        
-        // 获取分页数据
-        const result = await query(
-          `SELECT n.* 
-           FROM notes n 
-           JOIN note_tags nt ON n.id = nt.note_id 
-           WHERE nt.tag_id = $1 
-           ORDER BY n.created_at DESC 
-           LIMIT $2 OFFSET $3`,
-          [req.params.id, limit, offset]
-        )
-        
-        const notes = result.rows.map(row => ({
-          id: row.id, title: row.title, content: row.content, ingredients: row.ingredients, steps: row.steps,
-          images: JSON.parse(row.images || '[]'), author_id: row.author_id, author_name: row.author_name,
-          likes: row.likes, liked: row.liked, created_at: row.created_at
-        }))
-        
-        res.json({ notes, total, page, limit })
-      } catch (e) {
-        res.status(500).json({ success: false, message: e.message, notes: [], total: 0, page, limit })
-      }
-    })
-
-    // 系统状态监控API
-    app.get('/api/status', authenticateToken, requireAdmin, async (req, res) => {
-      const status = monitor.collectSystemStatus()
-      status.version = process.env.npm_package_version || '1.0.0'
-
-      // 获取数据库表统计
-      try {
-        const tables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags', 'follows']
-        const tableCounts = {}
-        let totalRecords = 0
-
-        for (const table of tables) {
-          try {
-            const result = await query(`SELECT COUNT(*) as count FROM ${table}`)
-            const count = parseInt(result.rows[0].count) || 0
-            tableCounts[table] = count
-            totalRecords += count
-          } catch (e) {
-            tableCounts[table] = 0
-          }
-        }
-
-        // 估算数据库大小 (每条记录约 1KB)
-        status.database = {
-          totalSize: totalRecords * 1024,
-          tables: tableCounts
-        }
-      } catch (e) {
-        // 跳过数据库统计
-      }
-
-      res.json({ success: true, status })
-    })
+app.post('/api/tags', authenticateToken, async (req, res) => {
+  const { name } = req.body
+  
+  try {
+    if (!name || name.trim().length === 0) {
+      return res.json({ success: false, message: '标签名称不能为空' })
+    }
     
-    // 数据库管理API
-    app.get('/api/db/info', authenticateToken, requireAdmin, async (req, res) => {
-      try {
-        const result = await query('SELECT version() as version')
-        res.json({ success: true, data: {
-          database: 'PostgreSQL',
-          version: result.rows[0].version,
-          tables: ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags']
-        } })
-      } catch (e) {
-        res.json({ success: false, message: e.message })
-      }
-    })
+    if (name.length > 20) {
+      return res.json({ success: false, message: '标签名称长度不能超过20个字符' })
+    }
     
-    app.get('/api/db/tables', authenticateToken, requireAdmin, async (req, res) => {
-      try {
-        const tables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags', 'follows']
-        const tableInfo = []
-        
-        for (const table of tables) {
-          const countResult = await query(`SELECT COUNT(*) as count FROM ${table}`)
-          const sizeResult = await query(`SELECT pg_size_pretty(pg_total_relation_size('${table}')) as size`)
-          tableInfo.push({
-            name: table,
-            count: countResult.rows[0].count,
-            size: sizeResult.rows[0].size
-          })
-        }
-        
-        res.json({ success: true, data: tableInfo })
-      } catch (e) {
-        res.json({ success: false, message: e.message })
-      }
-    })
+    const id = crypto.randomUUID()
+    const created_at = new Date().toISOString()
     
-    app.get('/api/db/table/:tableName', authenticateToken, requireAdmin, async (req, res) => {
-      const { tableName } = req.params
-      const { page = 1, limit = 10 } = req.query
-      
-      try {
-        const validTables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags']
-        if (!validTables.includes(tableName)) {
-          return res.json({ success: false, message: '无效的表名' })
-        }
-        
-        const offset = (page - 1) * limit
-        const result = await query(`SELECT * FROM ${tableName} ORDER BY created_at DESC LIMIT $1 OFFSET $2`, [limit, offset])
-        const countResult = await query(`SELECT COUNT(*) as total FROM ${tableName}`)
-        
-        res.json({ success: true, data: {
-          rows: result.rows,
-          total: countResult.rows[0].total,
-          page: parseInt(page),
-          limit: parseInt(limit)
-        } })
-      } catch (e) {
-        res.json({ success: false, message: e.message })
-      }
-    })
+    await query(
+      'INSERT INTO tags (id, name, created_at) VALUES ($1, $2, $3)',
+      [id, name.trim(), created_at]
+    )
     
-    app.post('/api/db/query', authenticateToken, requireAdmin, async (req, res) => {
-      const { query: sqlQuery } = req.body
-      
-      try {
-        // 限制只能执行SELECT查询
-        if (!sqlQuery.toLowerCase().startsWith('select')) {
-          return res.json({ success: false, message: '只能执行SELECT查询' })
-        }
-        
-        const result = await query(sqlQuery)
-        res.json({ success: true, data: result.rows })
-      } catch (e) {
-        res.json({ success: false, message: e.message })
-      }
-    })
+    res.json({ success: true, tag: { id, name: name.trim(), created_at } })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+app.get('/api/notes/:id/tags', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT t.id, t.name 
+       FROM tags t 
+       JOIN note_tags nt ON t.id = nt.tag_id 
+       WHERE nt.note_id = $1 
+       ORDER BY t.name`,
+      [req.params.id]
+    )
+    const tags = result.rows.map(row => ({
+      id: row.id,
+      name: row.name
+    }))
+    res.json(tags)
+  } catch (e) {
+    res.json([])
+  }
+})
+
+app.post('/api/notes/:id/tags', authenticateToken, async (req, res) => {
+  const { tagIds } = req.body
+  
+  try {
+    // 先删除该笔记的所有标签关联
+    await query('DELETE FROM note_tags WHERE note_id = $1', [req.params.id])
     
-    // 表结构查看 API
-    app.get('/api/db/table/:tableName/structure', authenticateToken, requireAdmin, async (req, res) => {
-      const { tableName } = req.params
+    // 添加新的标签关联
+    for (const tagId of tagIds) {
+      const id = crypto.randomUUID()
+      await query(
+        'INSERT INTO note_tags (id, note_id, tag_id) VALUES ($1, $2, $3)',
+        [id, req.params.id, tagId]
+      )
+    }
+    
+    res.json({ success: true })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
 
+app.get('/api/tags/:id/notes', async (req, res) => {
+  const page = parseInt(req.query.page) || 1
+  const limit = parseInt(req.query.limit) || 10
+  const offset = (page - 1) * limit
+  
+  try {
+    // 获取总数
+    const countResult = await query(
+      `SELECT COUNT(DISTINCT nt.note_id) as count 
+       FROM note_tags nt 
+       WHERE nt.tag_id = $1`,
+      [req.params.id]
+    )
+    const total = parseInt(countResult.rows[0].count) || 0
+    
+    // 获取分页数据
+    const result = await query(
+      `SELECT n.* 
+       FROM notes n 
+       JOIN note_tags nt ON n.id = nt.note_id 
+       WHERE nt.tag_id = $1 
+       ORDER BY n.created_at DESC 
+       LIMIT $2 OFFSET $3`,
+      [req.params.id, limit, offset]
+    )
+    
+    const notes = result.rows.map(row => ({
+      id: row.id, title: row.title, content: row.content, ingredients: row.ingredients, steps: row.steps,
+      images: JSON.parse(row.images || '[]'), author_id: row.author_id, author_name: row.author_name,
+      likes: row.likes, liked: row.liked, created_at: row.created_at
+    }))
+    
+    res.json({ notes, total, page, limit })
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message, notes: [], total: 0, page, limit })
+  }
+})
+
+// 系统状态监控API
+app.get('/api/status', authenticateToken, requireAdmin, async (req, res) => {
+  const status = monitor.collectSystemStatus()
+  status.version = process.env.npm_package_version || '1.0.0'
+
+  // 获取数据库表统计
+  try {
+    const tables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags', 'follows']
+    const tableCounts = {}
+    let totalRecords = 0
+
+    for (const table of tables) {
       try {
-        const validTables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags']
-        if (!validTables.includes(tableName)) {
-          return res.json({ success: false, message: '无效的表名' })
-        }
-
-        const result = await query(`
-          SELECT column_name, data_type, is_nullable, column_default
-          FROM information_schema.columns
-          WHERE table_name = $1
-          ORDER BY ordinal_position
-        `, [tableName])
-
-        // 同时获取表的主键信息
-        const pkResult = await query(`
-          SELECT a.attname as column_name
-          FROM pg_index i
-          JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-          WHERE i.indrelid = $1::regclass AND i.indisprimary
-        `, [tableName])
-
-        res.json({ success: true, data: {
-          columns: result.rows,
-          primaryKeys: pkResult.rows.map(r => r.column_name)
-        } })
+        const result = await query(`SELECT COUNT(*) as count FROM ${table}`)
+        const count = parseInt(result.rows[0].count) || 0
+        tableCounts[table] = count
+        totalRecords += count
       } catch (e) {
-        res.json({ success: false, message: e.message })
+        tableCounts[table] = 0
       }
-    })
-
-    // 数据库备份 API
-    app.get('/api/db/backup', authenticateToken, requireAdmin, async (req, res) => {
-      const { includeData = 'true' } = req.query
-
-      try {
-        const tables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags', 'follows']
-        let backup = '-- 数据库备份\n-- 生成时间: ' + new Date().toISOString() + '\n\n'
-
-        for (const table of tables) {
-          // 获取表结构
-          const columns = await query(`
-            SELECT column_name, data_type, is_nullable, column_default
-            FROM information_schema.columns WHERE table_name = $1
-          `, [table])
-
-          // 生成 CREATE TABLE
-          backup += `CREATE TABLE ${table} (\n`
-          const columnDefs = columns.rows.map(col =>
-            `  ${col.column_name} ${col.data_type}${col.is_nullable === 'NO' ? ' NOT NULL' : ''}${col.column_default ? ' DEFAULT ' + col.column_default : ''}`
-          )
-          backup += columnDefs.join(',\n') + '\n);\n\n'
-
-          // 包含数据时生成 INSERT
-          if (includeData === 'true') {
-            const data = await query(`SELECT * FROM ${table}`)
-            for (const row of data.rows) {
-              const values = Object.values(row).map(v =>
-                v === null ? 'NULL' : typeof v === 'string' ? "'" + v.replace(/'/g, "''") + "'" : v
-              ).join(', ')
-              backup += `INSERT INTO ${table} VALUES (${values});\n`
-            }
-          }
-          backup += '\n'
-        }
-
-        res.json({ success: true, data: { backup } })
-      } catch (e) {
-        res.json({ success: false, message: e.message })
-      }
-    })
-
-    // 生产环境下处理前端路由
-    if (process.env.NODE_ENV === 'production') {
-      app.get('*', (req, res) => {
-        res.sendFile(join(__dirname, 'dist', 'index.html'))
-      })
     }
 
-    // 服务器启动
-    app.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`)
-      if (process.env.NODE_ENV === 'production') {
-        logger.info('Running in production mode')
+    // 估算数据库大小 (每条记录约 1KB)
+    status.database = {
+      totalSize: totalRecords * 1024,
+      tables: tableCounts
+    }
+  } catch (e) {
+    // 跳过数据库统计
+  }
+
+  res.json({ success: true, status })
+})
+
+// 数据库管理API
+app.get('/api/db/info', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await query('SELECT version() as version')
+    res.json({ success: true, data: {
+      database: 'PostgreSQL',
+      version: result.rows[0].version,
+      tables: ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags']
+    } })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+app.get('/api/db/tables', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const tables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags', 'follows']
+    const tableInfo = []
+    
+    for (const table of tables) {
+      const countResult = await query(`SELECT COUNT(*) as count FROM ${table}`)
+      const sizeResult = await query(`SELECT pg_size_pretty(pg_total_relation_size('${table}')) as size`)
+      tableInfo.push({
+        name: table,
+        count: countResult.rows[0].count,
+        size: sizeResult.rows[0].size
+      })
+    }
+    
+    res.json({ success: true, data: tableInfo })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+app.get('/api/db/table/:tableName', authenticateToken, requireAdmin, async (req, res) => {
+  const { tableName } = req.params
+  const { page = 1, limit = 10 } = req.query
+  
+  try {
+    const validTables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags']
+    if (!validTables.includes(tableName)) {
+      return res.json({ success: false, message: '无效的表名' })
+    }
+    
+    const offset = (page - 1) * limit
+    const result = await query(`SELECT * FROM ${tableName} ORDER BY created_at DESC LIMIT $1 OFFSET $2`, [limit, offset])
+    const countResult = await query(`SELECT COUNT(*) as total FROM ${tableName}`)
+    
+    res.json({ success: true, data: {
+      rows: result.rows,
+      total: countResult.rows[0].total,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    } })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+app.post('/api/db/query', authenticateToken, requireAdmin, async (req, res) => {
+  const { query: sqlQuery } = req.body
+  
+  try {
+    // 限制只能执行SELECT查询
+    if (!sqlQuery.toLowerCase().startsWith('select')) {
+      return res.json({ success: false, message: '只能执行SELECT查询' })
+    }
+    
+    const result = await query(sqlQuery)
+    res.json({ success: true, data: result.rows })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// 表结构查看 API
+app.get('/api/db/table/:tableName/structure', authenticateToken, requireAdmin, async (req, res) => {
+  const { tableName } = req.params
+
+  try {
+    const validTables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags']
+    if (!validTables.includes(tableName)) {
+      return res.json({ success: false, message: '无效的表名' })
+    }
+
+    const result = await query(`
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns
+      WHERE table_name = $1
+      ORDER BY ordinal_position
+    `, [tableName])
+
+    // 同时获取表的主键信息
+    const pkResult = await query(`
+      SELECT a.attname as column_name
+      FROM pg_index i
+      JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+      WHERE i.indrelid = $1::regclass AND i.indisprimary
+    `, [tableName])
+
+    res.json({ success: true, data: {
+      columns: result.rows,
+      primaryKeys: pkResult.rows.map(r => r.column_name)
+    } })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// 数据库备份 API
+app.get('/api/db/backup', authenticateToken, requireAdmin, async (req, res) => {
+  const { includeData = 'true' } = req.query
+
+  try {
+    const tables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags', 'follows']
+    let backup = '-- 数据库备份\n-- 生成时间: ' + new Date().toISOString() + '\n\n'
+
+    for (const table of tables) {
+      // 获取表结构
+      const columns = await query(`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns WHERE table_name = $1
+      `, [table])
+
+      // 生成 CREATE TABLE
+      backup += `CREATE TABLE ${table} (\n`
+      const columnDefs = columns.rows.map(col =>
+        `  ${col.column_name} ${col.data_type}${col.is_nullable === 'NO' ? ' NOT NULL' : ''}${col.column_default ? ' DEFAULT ' + col.column_default : ''}`
+      )
+      backup += columnDefs.join(',\n') + '\n);\n\n'
+
+      // 包含数据时生成 INSERT
+      if (includeData === 'true') {
+        const data = await query(`SELECT * FROM ${table}`)
+        for (const row of data.rows) {
+          const values = Object.values(row).map(v =>
+            v === null ? 'NULL' : typeof v === 'string' ? "'" + v.replace(/'/g, "''") + "'" : v
+          ).join(', ')
+          backup += `INSERT INTO ${table} VALUES (${values});\n`
+        }
       }
-    })
+      backup += '\n'
+    }
+
+    res.json({ success: true, data: { backup } })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// 生产环境下处理前端路由
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(join(__dirname, 'dist', 'index.html'))
   })
+}
+
+// 服务器启动
+function startServer() {
+  // 直接启动服务器，不等待数据库初始化
+  app.listen(PORT, () => {
+    logger.info(`Server running on port ${PORT}`)
+    if (process.env.NODE_ENV === 'production') {
+      logger.info('Running in production mode')
+    }
+  })
+  
+  // 后台初始化数据库
+  initDb().then(() => {
+    console.log('Database initialized successfully')
+  }).catch((err) => {
+    console.error('Failed to initialize database:', err)
+    console.log('Server is running without database initialization...')
+  })
+}
+
+startServer()

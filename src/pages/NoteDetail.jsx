@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { findNoteById, updateNote, getCommentsByNoteId, createComment, deleteCommentById, getNoteTags, likeNote, unlikeNote, getNoteLikeStatus } from '../utils/db'
 import { useAuth } from '../context/AuthContext'
 import Loading from '../components/Loading'
-import html2canvas from 'html2canvas'
 import './NoteDetail.css'
 
 export default function NoteDetail() {
@@ -68,147 +67,36 @@ export default function NoteDetail() {
     setSharing(true)
     try {
       // 获取笔记信息
-      const coverImage = images[0] || ''
       const title = note.title || '笔记分享'
       const content = (note.content || '').substring(0, 100) + (note.content && note.content.length > 100 ? '...' : '')
-      const authorName = note.author_name || '匿名'
-      const likes = note.likes || 0
-      const displayTags = tags.slice(0, 3).map(t => t.name).join(' · ')
+      const shareUrl = window.location.href
 
-      // 创建Canvas - 9:16 竖版
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      const cardWidth = 375
-      const cardHeight = 667
-      canvas.width = cardWidth
-      canvas.height = cardHeight
-
-      // 绘制深色渐变背景
-      const gradient = ctx.createLinearGradient(0, 0, cardWidth, cardHeight)
-      gradient.addColorStop(0, '#1a1a2e')
-      gradient.addColorStop(1, '#16213e')
-      ctx.fillStyle = gradient
-      ctx.fillRect(0, 0, cardWidth, cardHeight)
-
-      // 如果有封面图，绘制封面
-      if (coverImage) {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        await new Promise((resolve, reject) => {
-          img.onload = resolve
-          img.onerror = resolve
-          img.src = coverImage
+      // 尝试使用 Web Share API
+      if (navigator.share) {
+        await navigator.share({
+          title: title,
+          text: content,
+          url: shareUrl
         })
-
-        if (img.complete && img.naturalWidth > 0) {
-          // 计算 cover 模式: 填充整个区域，等比缩放
-          const imgRatio = img.naturalWidth / img.naturalHeight
-          const cardRatio = cardWidth / cardHeight
-
-          let sx, sy, sw, sh, dx, dy, dw, dh
-          if (imgRatio > cardRatio) {
-            // 图片更宽，以高度为准
-            dw = cardWidth
-            dh = cardHeight
-            sy = 0
-            sh = img.naturalHeight
-            sx = (img.naturalWidth - img.naturalHeight * cardRatio) / 2
-            sw = img.naturalHeight * cardRatio
-          } else {
-            // 图片更高，以宽度为准
-            dw = cardWidth
-            dh = cardWidth / imgRatio
-            sx = 0
-            sy = (img.naturalHeight - img.naturalWidth / cardRatio) / 2
-            sw = img.naturalWidth
-            sh = img.naturalWidth / cardRatio
-          }
-
-          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cardWidth, cardHeight)
+        // 分享成功后不需要提示，因为系统会处理
+      } else {
+        // Web Share API 不可用，使用复制链接的方式
+        await navigator.clipboard.writeText(shareUrl)
+        alert('分享链接已复制到剪贴板，请粘贴到微信朋友圈分享~')
+      }
+    } catch (error) {
+      console.error('分享失败:', error)
+      // 如果是用户取消分享，不显示错误提示
+      if (error.name !== 'AbortError') {
+        // 尝试降级到复制链接
+        try {
+          const shareUrl = window.location.href
+          await navigator.clipboard.writeText(shareUrl)
+          alert('分享链接已复制到剪贴板，请粘贴到微信朋友圈分享~')
+        } catch (clipboardError) {
+          alert('分享失败，请手动复制链接分享')
         }
       }
-
-      // 绘制渐变遮罩
-      const maskGradient = ctx.createLinearGradient(0, cardHeight * 0.3, 0, cardHeight)
-      maskGradient.addColorStop(0, 'rgba(0,0,0,0.1)')
-      maskGradient.addColorStop(0.6, 'rgba(0,0,0,0.5)')
-      maskGradient.addColorStop(1, 'rgba(0,0,0,0.8)')
-      ctx.fillStyle = maskGradient
-      ctx.fillRect(0, 0, cardWidth, cardHeight)
-
-      // 绘制标题
-      ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif'
-      ctx.textAlign = 'left'
-      wrapText(ctx, title, 24, 180, cardWidth - 48, 34)
-
-      // 绘制简介
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'
-      ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif'
-      wrapText(ctx, content, 24, 280, cardWidth - 48, 20)
-
-      // 绘制作者信息
-      const authorY = cardHeight - 160
-      const authorImg = new Image()
-      authorImg.crossOrigin = 'anonymous'
-      authorImg.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${note.author_id}`
-      await new Promise(resolve => {
-        authorImg.onload = resolve
-        authorImg.onerror = resolve
-      })
-      if (authorImg.complete && authorImg.naturalWidth > 0) {
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(48, authorY, 20, 0, Math.PI * 2)
-        ctx.closePath()
-        ctx.clip()
-        ctx.drawImage(authorImg, 28, authorY - 20, 40, 40)
-        ctx.restore()
-      }
-      ctx.fillStyle = '#ffffff'
-      ctx.font = '600 15px -apple-system, BlinkMacSystemFont, sans-serif'
-      ctx.fillText(authorName, 78, authorY + 5)
-
-      // 绘制标签
-      if (displayTags) {
-        ctx.fillStyle = 'rgba(255,255,255,0.8)'
-        ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif'
-        ctx.fillText('🏷️ ' + displayTags, 24, authorY + 35)
-      }
-
-      // 绘制底部信息栏
-      const bottomGradient = ctx.createLinearGradient(0, cardHeight - 80, 0, cardHeight)
-      bottomGradient.addColorStop(0, 'rgba(0,0,0,0)')
-      bottomGradient.addColorStop(1, 'rgba(0,0,0,0.6)')
-      ctx.fillStyle = bottomGradient
-      ctx.fillRect(0, cardHeight - 80, cardWidth, 80)
-
-      // 绘制点赞
-      ctx.font = '20px sans-serif'
-      ctx.fillText('❤️', 24, cardHeight - 40)
-      ctx.fillStyle = '#ffffff'
-      ctx.font = '600 14px -apple-system, BlinkMacSystemFont, sans-serif'
-      ctx.fillText(likes.toString(), 54, cardHeight - 40)
-
-      // 绘制品牌
-      ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif'
-      ctx.textAlign = 'right'
-      ctx.fillText('🍜 美食笔记', cardWidth - 24, cardHeight - 45)
-      ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif'
-      ctx.fillStyle = 'rgba(255,255,255,0.7)'
-      ctx.fillText('分享美食，记录生活', cardWidth - 24, cardHeight - 26)
-
-      // 下载图片
-      const link = document.createElement('a')
-      link.download = `笔记分享-${title}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-
-      alert('分享图片已生成，请保存后分享到朋友圈~')
-    } catch (error) {
-      console.error('生成分享图片失败:', error)
-      alert('生成分享图片失败，请稍后重试')
     } finally {
       setSharing(false)
     }

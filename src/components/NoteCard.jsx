@@ -24,7 +24,8 @@ export default function NoteCard({ note, onNoteUpdate }) {
 
   // 支持多图：优先使用 coverImage，否则兼容旧的 images 数组
   const coverImage = localNote.coverImage || localNote.images?.[0] || null
-  const images = localNote.images || []
+  // 从coverImage创建单元素数组，确保即使后端只返回coverImage也能正确显示
+  const images = localNote.images || (coverImage ? [coverImage] : [])
 
   // 兼容旧数据
   const authorId = localNote.author_id || localNote.authorId || ''
@@ -73,11 +74,25 @@ export default function NoteCard({ note, onNoteUpdate }) {
 
   return (
     <Link to={`/note/${localNote.id}`} className="note-card">
-      <div className="note-card-image">
-        <img src={coverImage} alt={title} loading="lazy" />
-        {(images?.length || 0) > 1 && (
+      <div className={`note-card-image ${images.length > 1 ? 'multi-images' : ''} ${images.length > 4 ? 'grid-3' : ''}`}>
+        {images.length === 1 ? (
+          <img src={coverImage} alt={title} loading="lazy" />
+        ) : images.length > 1 ? (
+          <div className="image-grid">
+            {images.slice(0, 9).map((image, index) => (
+              <div key={index} className="grid-item">
+                <img src={image} alt={`${title} - 图片 ${index + 1}`} loading="lazy" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="no-image">
+            <span>📷</span>
+          </div>
+        )}
+        {(images.length > 9) && (
           <div className="note-card-more">
-            <span>{images.length}</span>
+            <span>+{images.length - 9}</span>
           </div>
         )}
       </div>

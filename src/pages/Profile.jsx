@@ -318,8 +318,7 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
         ) : notes.length > 0 ? (
           <div className="profile-notes-grid">
             {notes.map(note => {
-              const images = note.images || []
-              const coverImage = images[0]
+              const coverImage = note.coverImage || (note.images && note.images[0]) || null
               return (
                 <div key={note.id} className="profile-note-item">
                   <Link to={`/note/${note.id}`} className="profile-note-link">
