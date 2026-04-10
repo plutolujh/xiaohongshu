@@ -50,8 +50,9 @@ const parseDbUrl = (url) => {
         database,
         user,
         password,
-        ssl: true,
-        sslmode: 'require'
+        ssl: {
+          rejectUnauthorized: false
+        }
       }
     }
     throw new Error('Invalid PostgreSQL URL')
@@ -68,8 +69,9 @@ const parseDbUrl = (url) => {
     database,
     user,
     password,
-    ssl: paramsObj.ssl === 'true' || paramsObj.sslmode === 'require',
-    sslmode: paramsObj.sslmode
+    ssl: {
+      rejectUnauthorized: false
+    }
   }
 }
 
