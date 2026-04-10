@@ -108,7 +108,7 @@ export async function deleteNoteById(id) {
 }
 
 export async function findNoteById(id) {
-  const res = await fetch(`${API_BASE}/notes/${id}`, {
+  const res = await fetch(`${API_BASE}/notes/${id}?full=true`, {
     headers: getHeaders()
   })
   return res.json()
