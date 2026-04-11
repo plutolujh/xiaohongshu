@@ -14,17 +14,54 @@ export default function EditNote() {
   const [loading, setLoading] = useState(false)
   const [loadingNote, setLoadingNote] = useState(true)
   const [success, setSuccess] = useState(false)
+  const [tags, setTags] = useState([])
+  const [selectedTags, setSelectedTags] = useState([])
+  const [loadingTags, setLoadingTags] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (id) {
+      // 加载笔记
       findNoteById(id).then(note => {
         if (note && note.author_id === user.id) {
           setTitle(note.title)
           // 将三个字段合并成一个content字段
           setContent(`${note.content}\n\n### 食材\n${note.ingredients}\n\n### 做法\n${note.steps}`)
           setImages(note.images || [])
+          
+          // 加载标签列表
+          setLoadingTags(true)
+          fetch('/api/tags', {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          .then(response => response.json())
+          .then(tagsData => {
+            setTags(tagsData)
+            
+            // 加载笔记的标签
+            fetch(`/api/notes/${id}/tags`, {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            .then(response => response.json())
+            .then(noteTags => {
+              const noteTagIds = noteTags.map(tag => tag.id)
+              setSelectedTags(noteTagIds)
+              setLoadingTags(false)
+            })
+            .catch(err => {
+              console.error('Error loading note tags:', err)
+              setLoadingTags(false)
+            })
+          })
+          .catch(err => {
+            console.error('Error loading tags:', err)
+            setLoadingTags(false)
+          })
         } else {
           navigate('/')
         }
@@ -171,8 +208,21 @@ export default function EditNote() {
 
     setLoading(true)
     try {
+      // 保存笔记
       const result = await updateNote(updatedNote)
       if (result.success) {
+        // 更新标签
+        const token = user.token
+        const tagResult = await fetch(`/api/notes/${id}/tags`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ tagIds: selectedTags })
+        })
+        .then(response => response.json())
+        
         setSuccess(true)
         // 延迟1秒后跳转，让用户看到成功提示
         setTimeout(() => {
@@ -260,6 +310,35 @@ export default function EditNote() {
               rows={15}
               disabled={loading}
             />
+          </div>
+
+          <div className="publish-field">
+            <label>标签</label>
+            {loadingTags ? (
+              <div className="tags-loading">
+                <Loading text="加载标签中..." size="small" />
+              </div>
+            ) : (
+              <div className="tags-selector">
+                {tags.map(tag => (
+                  <label key={tag.id} className="tag-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedTags.includes(tag.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTags([...selectedTags, tag.id])
+                        } else {
+                          setSelectedTags(selectedTags.filter(id => id !== tag.id))
+                        }
+                      }}
+                      disabled={loading}
+                    />
+                    <span>{tag.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           <button type="submit" className="publish-button" disabled={loading}>

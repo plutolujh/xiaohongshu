@@ -15,9 +15,9 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [updatingStatus, setUpdatingStatus] = useState(false)
-  const [updatingRole, setUpdatingRole] = useState(false)
+  const [deletingUsers, setDeletingUsers] = useState({})
+  const [updatingStatusUsers, setUpdatingStatusUsers] = useState({})
+  const [updatingRoleUsers, setUpdatingRoleUsers] = useState({})
 
   useEffect(() => {
     fetchUsers()
@@ -47,7 +47,7 @@ const UserManagement = () => {
       return
     }
 
-    setDeleting(true)
+    setDeletingUsers(prev => ({ ...prev, [userId]: true }))
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -67,7 +67,7 @@ const UserManagement = () => {
       alert('删除用户失败')
       console.error('Error deleting user:', err)
     } finally {
-      setDeleting(false)
+      setDeletingUsers(prev => ({ ...prev, [userId]: false }))
     }
   }
 
@@ -108,7 +108,7 @@ const UserManagement = () => {
   }
 
   const handleStatusChange = async (userId, newStatus) => {
-    setUpdatingStatus(true)
+    setUpdatingStatusUsers(prev => ({ ...prev, [userId]: true }))
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -130,12 +130,12 @@ const UserManagement = () => {
       alert('更新用户状态失败')
       console.error('Error updating user status:', err)
     } finally {
-      setUpdatingStatus(false)
+      setUpdatingStatusUsers(prev => ({ ...prev, [userId]: false }))
     }
   }
 
   const handleRoleChange = async (userId, newRole) => {
-    setUpdatingRole(true)
+    setUpdatingRoleUsers(prev => ({ ...prev, [userId]: true }))
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -157,7 +157,7 @@ const UserManagement = () => {
       alert('更新用户角色失败')
       console.error('Error updating user role:', err)
     } finally {
-      setUpdatingRole(false)
+      setUpdatingRoleUsers(prev => ({ ...prev, [userId]: false }))
     }
   }
 
@@ -290,9 +290,9 @@ const UserManagement = () => {
                       <button
                         onClick={() => handleStatusChange(user.id, user.status === 'active' ? 'inactive' : 'active')}
                         className={`btn-status ${user.status === 'active' ? 'btn-deactivate' : 'btn-activate'}`}
-                        disabled={updatingStatus}
+                        disabled={updatingStatusUsers[user.id]}
                       >
-                        {updatingStatus ? (
+                        {updatingStatusUsers[user.id] ? (
                           <div className="button-loading">
                             <Loading text="" size="small" />
                             <span>处理中...</span>
@@ -303,9 +303,9 @@ const UserManagement = () => {
                         <button
                           onClick={() => handleRoleChange(user.id, 'admin')}
                           className="btn-role"
-                          disabled={updatingRole}
+                          disabled={updatingRoleUsers[user.id]}
                         >
-                          {updatingRole ? (
+                          {updatingRoleUsers[user.id] ? (
                             <div className="button-loading">
                               <Loading text="" size="small" />
                               <span>处理中...</span>
@@ -317,9 +317,9 @@ const UserManagement = () => {
                         <button
                           onClick={() => handleRoleChange(user.id, 'user')}
                           className="btn-role"
-                          disabled={updatingRole}
+                          disabled={updatingRoleUsers[user.id]}
                         >
-                          {updatingRole ? (
+                          {updatingRoleUsers[user.id] ? (
                             <div className="button-loading">
                               <Loading text="" size="small" />
                               <span>处理中...</span>
@@ -327,8 +327,8 @@ const UserManagement = () => {
                           ) : '取消管理员'}
                         </button>
                       )}
-                      <button onClick={() => handleDelete(user.id)} className="btn-delete" disabled={deleting}>
-                        {deleting ? (
+                      <button onClick={() => handleDelete(user.id)} className="btn-delete" disabled={deletingUsers[user.id]}>
+                        {deletingUsers[user.id] ? (
                           <div className="button-loading">
                             <Loading text="" size="small" />
                             <span>删除中...</span>

@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ThemeManager from './components/ThemeManager'
@@ -16,14 +17,32 @@ import NoteManagement from './pages/NoteManagement'
 import Feedback from './pages/Feedback'
 import FeedbackManagement from './pages/FeedbackManagement'
 import DatabaseManagement from './pages/DatabaseManagement'
+import TagManagement from './pages/TagManagement'
 import FollowersPage from './pages/FollowersPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import { ThemeProvider } from './context/ThemeContext'
 import { I18nProvider } from './context/I18nContext'
+import { supabase } from './utils/supabase'
 import './styles/theme.css'
 
 export default function App() {
+  const [todos, setTodos] = useState([])
+
+  useEffect(() => {
+    async function getTodos() {
+      try {
+        const { data: todos } = await supabase.from('todos').select()
+        if (todos) {
+          setTodos(todos)
+        }
+      } catch (error) {
+        console.error('Error fetching todos:', error)
+      }
+    }
+    getTodos()
+  }, [])
+
   return (
     <I18nProvider>
       <ThemeProvider>
@@ -127,6 +146,14 @@ export default function App() {
               element={
                 <AdminRoute>
                   <DatabaseManagement />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/tag-management"
+              element={
+                <AdminRoute>
+                  <TagManagement />
                 </AdminRoute>
               }
             />

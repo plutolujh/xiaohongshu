@@ -273,3 +273,49 @@
   color: #fff;
   font-weight: 500;
 }
+
+/* 标签选择器样式 */
+.tags-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.tag-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.tag-checkbox:hover {
+  border-color: #ff2442;
+  background: #fffbfb;
+}
+
+.tag-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ff2442;
+}
+
+.tag-checkbox input[type="checkbox"]:checked + span {
+  color: #ff2442;
+  font-weight: 500;
+}
+
+.tags-loading {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f8f8;
+  border-radius: 8px;
+  margin-top: 8px;
+}

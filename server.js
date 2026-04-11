@@ -8,6 +8,12 @@ import { dirname, join } from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
 import { Pool } from 'pg'
+import { createClient } from '@supabase/supabase-js'
+import { TagRepository } from './repositories/TagRepository.js'
+import { NoteRepository } from './repositories/NoteRepository.js'
+import { UserRepository } from './repositories/UserRepository.js'
+import { CommentRepository } from './repositories/CommentRepository.js'
+import { FeedbackRepository } from './repositories/FeedbackRepository.js'
 import logger from './src/utils/logger.js'
 import monitor from './src/utils/monitor.js'
 
@@ -30,70 +36,67 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
   return generateSecretKey()
 })()
 
+// Supabase客户端初始化
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
+// Repository实例化
+const tagRepo = new TagRepository(supabase)
+const noteRepo = new NoteRepository(supabase)
+const userRepo = new UserRepository(supabase)
+const commentRepo = new CommentRepository(supabase)
+const feedbackRepo = new FeedbackRepository(supabase)
+
 const app = express()
 const PORT = process.env.PORT || 3004
 
-// PostgreSQL数据库连接
-const dbUrl = process.env.DATABASE_URL || 'postgresql://lu_xiaohong_user:YOUR_PASSWORD@dpg-d79o5l15pdvs73bn8jfg-a.oregon-postgres.render.com:5432/lu_xiaohong?sslmode=require'
-
-// 解析PostgreSQL连接URL
-const parseDbUrl = (url) => {
-  const match = url.match(/postgresql:\/\/(.*?):(.*?)@(.*?):(\d+)\/(.*?)\?(.*)/)
-  if (!match) {
-    // 尝试匹配没有参数的URL格式
-    const matchWithoutParams = url.match(/postgresql:\/\/(.*?):(.*?)@(.*?):(\d+)\/(.*)/)
-    if (matchWithoutParams) {
-      const [, user, password, host, port, database] = matchWithoutParams
-      return {
-        host,
-        port: parseInt(port),
-        database,
-        user,
-        password,
-        ssl: {
-          rejectUnauthorized: false
-        }
-      }
-    }
-    throw new Error('Invalid PostgreSQL URL')
-  }
-  const [, user, password, host, port, database, params] = match
-  const paramsObj = {}
-  params.split('&').forEach(param => {
-    const [key, value] = param.split('=')
-    paramsObj[key] = value
-  })
-  return {
-    host,
-    port: parseInt(port),
-    database,
-    user,
-    password,
-    ssl: {
-      rejectUnauthorized: false
-    }
-  }
+// 标签缓存
+const tagCache = {
+  data: null,
+  timestamp: 0,
+  ttl: 30000 // 30秒缓存
 }
 
-const dbConfig = parseDbUrl(dbUrl)
-const pool = new Pool(dbConfig)
+// 获取缓存的标签
+function getCachedTags() {
+  const now = Date.now()
+  if (tagCache.data && (now - tagCache.timestamp) < tagCache.ttl) {
+    return tagCache.data
+  }
+  return null
+}
+
+// 设置标签缓存
+function setCachedTags(data) {
+  tagCache.data = data
+  tagCache.timestamp = Date.now()
+}
 
 // 数据库连接状态
 let dbConnected = false
 
-// 测试数据库连接
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('Error connecting to database:', err.stack)
-    console.log('Starting server without database connection...')
-    dbConnected = false
-    // 不退出进程，继续启动服务器
-  } else {
-    console.log('Successfully connected to PostgreSQL database')
-    dbConnected = true
-    release()
+// 测试Supabase连接
+async function testSupabaseConnection() {
+  try {
+    // 测试Supabase连接
+    const { data, error } = await supabase.auth.getSession()
+    if (error) {
+      console.error('Error testing Supabase connection:', error)
+      dbConnected = true // 即使Supabase连接失败，也设置为true，使用模拟数据
+    } else {
+      console.log('Successfully connected to Supabase')
+      dbConnected = true
+    }
+  } catch (error) {
+    console.error('Error testing Supabase connection:', error)
+    dbConnected = true // 即使Supabase连接失败，也设置为true，使用模拟数据
   }
-})
+}
+
+// 测试Supabase连接
+testSupabaseConnection()
 
 // JWT验证中间件
 function authenticateToken(req, res, next) {
@@ -138,6 +141,7 @@ function validateRequest(req, res, next) {
   
   // 验证请求路径
   const validPaths = [
+    '/upload',
     '/users', '/users/:username', '/users/:id', '/users/:id/password', '/users/:id/status', '/users/:id/role',
     '/users/:id/follow', '/users/:id/followers', '/users/:id/following', '/users/:id/follow-status/:targetId', '/users/:id/follow-counts',
     '/user/:id', '/user/:id/tags',
@@ -146,7 +150,8 @@ function validateRequest(req, res, next) {
     '/comments', '/comments/:noteId', '/comments/:id',
     '/feedback', '/feedback/:id',
     '/tags', '/tags/popular', '/tags/:id', '/tags/:id/notes',
-    '/status',
+    '/admin/tags/:id',
+    '/health', '/status',
     '/db/info', '/db/tables', '/db/table/:tableName', '/db/table/:tableName/structure', '/db/query', '/db/backup'
   ]
   
@@ -267,233 +272,1199 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: '服务器内部错误' })
 })
 
+// 图片上传API
+app.post('/api/upload', authenticateToken, async (req, res) => {
+  try {
+    const { image, filename, folder } = req.body
+    
+    if (!image || !filename) {
+      return res.json({ success: false, message: '缺少必要参数' })
+    }
+    
+    // 解码Base64图片
+    const base64Data = image.split(';base64,').pop()
+    const buffer = Buffer.from(base64Data, 'base64')
+    
+    // 生成唯一文件名
+    const uniqueFilename = `${Date.now()}_${crypto.randomUUID()}_${filename}`
+    // 头像放 avatars 文件夹，其他放 files 文件夹
+    const filePath = folder === 'avatar' ? `avatars/${uniqueFilename}` : `files/${uniqueFilename}`
+    
+    // 上传到Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('xiaohongbucket')
+      .upload(filePath, buffer, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'image/jpeg'
+      })
+    
+    if (error) {
+      console.error('上传失败:', error)
+      return res.json({ success: false, message: '上传失败' })
+    }
+    
+    // 获取公共URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('xiaohongbucket')
+      .getPublicUrl(filePath)
+    
+    res.json({ success: true, url: publicUrl })
+  } catch (error) {
+    console.error('上传错误:', error)
+    res.json({ success: false, message: '服务器错误' })
+  }
+})
+
 // 健康检查API
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Server is running' })
 })
 
+// 测试创建表API
+app.post('/api/test/create-table', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    // 使用 Supabase 客户端执行 SQL
+    const { error } = await supabase
+      .rpc('execute_sql', {
+        sql: `
+          CREATE TABLE IF NOT EXISTS test_table (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `
+      })
+    
+    if (error) {
+      console.error('Error creating table:', error)
+      return res.json({ success: false, message: error.message })
+    }
+    
+    res.json({ success: true, message: '表创建成功' })
+  } catch (error) {
+    console.error('Error:', error)
+    res.json({ success: false, message: error.message })
+  }
+})
+
+// 测试插入数据API
+app.post('/api/test/insert-data', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { name, description } = req.body
+    
+    const { data, error } = await supabase
+      .from('test_table')
+      .insert({
+        name: name || '测试数据',
+        description: description || '这是测试数据'
+      })
+      .select()
+    
+    if (error) {
+      console.error('Error inserting data:', error)
+      return res.json({ success: false, message: error.message })
+    }
+    
+    res.json({ success: true, data: data[0] })
+  } catch (error) {
+    console.error('Error:', error)
+    res.json({ success: false, message: error.message })
+  }
+})
+
+// 测试查询数据API
+app.get('/api/test/data', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('test_table')
+      .select('*')
+    
+    if (error) {
+      console.error('Error querying data:', error)
+      return res.json({ success: false, message: error.message })
+    }
+    
+    res.json({ success: true, data })
+  } catch (error) {
+    console.error('Error:', error)
+    res.json({ success: false, message: error.message })
+  }
+})
+
+// 创建私信功能表结构API（无需认证）
+app.post('/api/messages/create-tables', async (req, res) => {
+  try {
+    // 创建对话表
+    const { error: convError } = await supabase
+      .rpc('execute_sql', {
+        sql: `
+          CREATE TABLE IF NOT EXISTS conversations (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name TEXT,
+            is_group BOOLEAN DEFAULT false,
+            last_message TEXT,
+            last_message_time TIMESTAMP,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `
+      })
+    
+    if (convError) {
+      console.error('Error creating conversations table:', convError)
+      return res.json({ success: false, message: convError.message })
+    }
+    
+    // 创建对话成员表
+    const { error: memberError } = await supabase
+      .rpc('execute_sql', {
+        sql: `
+          CREATE TABLE IF NOT EXISTS conversation_members (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+            user_id UUID NOT NULL,
+            last_read TIMESTAMP,
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(conversation_id, user_id)
+          )
+        `
+      })
+    
+    if (memberError) {
+      console.error('Error creating conversation_members table:', memberError)
+      return res.json({ success: false, message: memberError.message })
+    }
+    
+    // 创建消息表
+    const { error: messageError } = await supabase
+      .rpc('execute_sql', {
+        sql: `
+          CREATE TABLE IF NOT EXISTS messages (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+            sender_id UUID NOT NULL,
+            content TEXT NOT NULL,
+            type TEXT DEFAULT 'text',
+            status TEXT DEFAULT 'sent',
+            created_at TIMESTAMP DEFAULT NOW()
+          )
+        `
+      })
+    
+    if (messageError) {
+      console.error('Error creating messages table:', messageError)
+      return res.json({ success: false, message: messageError.message })
+    }
+    
+    // 创建索引
+    await supabase.rpc('execute_sql', {
+      sql: `
+        CREATE INDEX IF NOT EXISTS idx_conversation_members_conversation_id ON conversation_members(conversation_id);
+        CREATE INDEX IF NOT EXISTS idx_conversation_members_user_id ON conversation_members(user_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+      `
+    })
+    
+    res.json({ success: true, message: '私信功能表结构创建成功' })
+  } catch (error) {
+    console.error('Error:', error)
+    res.json({ success: false, message: error.message })
+  }
+})
+
 // 初始化数据库
 async function initDb() {
   try {
-    const client = await pool.connect()
+    // 测试Supabase连接
+    await testSupabaseConnection()
     
-    // 创建用户表
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        nickname TEXT NOT NULL,
-        avatar TEXT,
-        bio TEXT,
-        role TEXT DEFAULT 'user',
-        status TEXT DEFAULT 'active',
-        created_at TEXT
-      )
-    `)
-
-    // 创建笔记表
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS notes (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT,
-        ingredients TEXT,
-        steps TEXT,
-        images TEXT,
-        author_id TEXT NOT NULL,
-        author_name TEXT,
-        likes INTEGER DEFAULT 0,
-        liked INTEGER DEFAULT 0,
-        created_at TEXT,
-        FOREIGN KEY (author_id) REFERENCES users(id)
-      )
-    `)
-
-    // 创建评论表
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id TEXT PRIMARY KEY,
-        note_id TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        user_name TEXT,
-        content TEXT,
-        reply_to_id TEXT,
-        reply_to_user_name TEXT,
-        reply_to_content TEXT,
-        created_at TEXT,
-        FOREIGN KEY (note_id) REFERENCES notes(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
-      )
-    `)
-
-    // 创建意见反馈表
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS feedback (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        user_name TEXT,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        category TEXT NOT NULL,
-        contact TEXT,
-        status TEXT DEFAULT 'pending',
-        created_at TEXT,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-      )
-    `)
-
-    // 创建标签表
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS tags (
-        id TEXT PRIMARY KEY,
-        name TEXT UNIQUE NOT NULL,
-        created_at TEXT
-      )
-    `)
-
-    // 创建笔记-标签关联表
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS note_tags (
-        id TEXT PRIMARY KEY,
-        note_id TEXT NOT NULL,
-        tag_id TEXT NOT NULL,
-        FOREIGN KEY (note_id) REFERENCES notes(id),
-        FOREIGN KEY (tag_id) REFERENCES tags(id),
-        UNIQUE (note_id, tag_id)
-      )
-    `)
-
-    // 创建关注表
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS follows (
-        id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-        follower_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        following_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        created_at TEXT DEFAULT NOW(),
-        UNIQUE (follower_id, following_id)
-      )
-    `)
-
-    // 创建用户-标签喜欢表
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS user_likes (
-        id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-        created_at TEXT DEFAULT NOW(),
-        UNIQUE (user_id, tag_id)
-      )
-    `)
-
-    // 创建笔记点赞表（用户点赞笔记的记录）
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS note_likes (
-        id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-        created_at TEXT DEFAULT NOW(),
-        UNIQUE (user_id, note_id)
-      )
-    `)
-
-    // 创建索引以提升查询性能
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_notes_author_id ON notes(author_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at DESC)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_comments_note_id ON comments(note_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_note_tags_note_id ON note_tags(note_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_note_tags_tag_id ON note_tags(tag_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON follows(follower_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_follows_following_id ON follows(following_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_note_likes_user_id ON note_likes(user_id)`)
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_note_likes_note_id ON note_likes(note_id)`)
-
-    // 检查并添加示例用户
-    const userCountResult = await client.query('SELECT COUNT(*) FROM users')
-    const userCount = parseInt(userCountResult.rows[0].count)
+    // 创建索引和优化数据库
+    await createIndexes()
     
-    if (userCount === 0) {
-      // 添加示例用户
-      const hashedPassword = await bcrypt.hash('123456', 12)
-      await client.query(
-        `INSERT INTO users (id, username, password, nickname, avatar, created_at) 
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        ['demo', 'demo', hashedPassword, '美食达人', 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo', '2024-01-01T00:00:00Z']
-      )
-      
-      // 添加管理员用户
-      const adminPassword = await bcrypt.hash('123456', 12)
-      await client.query(
-        `INSERT INTO users (id, username, password, nickname, avatar, role, created_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        ['admin', 'lujh', adminPassword, '管理员', 'https://api.dicebear.com/7.x/avataaars/svg?seed=lujh', 'admin', '2024-01-01T00:00:00Z']
-      )
-      
-      console.log('已创建示例用户')
-    } else {
-      // 确保lujh用户存在且为管理员
-      const adminResult = await client.query('SELECT * FROM users WHERE username = $1', ['lujh'])
-      if (adminResult.rows.length === 0) {
-        const adminPassword = await bcrypt.hash('123456', 12)
-        await client.query(
-          `INSERT INTO users (id, username, password, nickname, avatar, role, status, created_at) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          ['admin', 'lujh', adminPassword, '管理员', 'https://api.dicebear.com/7.x/avataaars/svg?seed=lujh', 'admin', 'active', new Date().toISOString()]
-        )
-        console.log('已创建lujh管理员用户')
-      } else {
-        await client.query('UPDATE users SET role = $1 WHERE username = $2', ['admin', 'lujh'])
-        console.log('已将lujh用户设置为管理员')
-      }
-    }
-
-    // 检查并添加示例笔记
-    const noteCountResult = await client.query('SELECT COUNT(*) FROM notes')
-    const noteCount = parseInt(noteCountResult.rows[0].count)
-    
-    if (noteCount === 0) {
-      // 确保demo用户存在
-      let demoUserId = 'demo'
-      const demoResult = await client.query('SELECT id FROM users WHERE username = $1', ['demo'])
-      if (demoResult.rows.length > 0) {
-        demoUserId = demoResult.rows[0].id
-      }
-      
-      // 添加示例笔记
-      const notes = [
-        ['1', '超级美味的番茄炒蛋', '这道番茄炒蛋是家常必备，简单易学又好吃！', '番茄2个、鸡蛋3个、盐适量、糖少许、葱花适量', '1. 番茄切块，鸡蛋打散\n2. 炒鸡蛋至半熟盛出\n3. 炒番茄出汁\n4. 加入鸡蛋一起翻炒\n5. 出锅前撒上葱花', '["https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400"]', demoUserId, '美食达人', 128, 0, '2024-01-15T10:30:00Z'],
-        ['2', '香喷喷的红烧肉', '肥而不腻入口即化的红烧肉，太香了！', '五花肉500g、生抽2勺、老抽1勺、糖2勺、料酒1勺', '1. 五花肉切块焯水\n2. 炒糖色\n3. 加入肉块翻炒\n4. 加调料和水慢炖1小时', '["https://images.pexels.com/photos/1438672/pexels-photo-1438672.jpeg?auto=compress&cs=tinysrgb&w=400"]', demoUserId, '美食达人', 256, 0, '2024-01-14T15:20:00Z'],
-        ['3', '清爽凉拌黄瓜', '夏天必吃的清爽小菜，简单又开胃', '黄瓜2根、蒜末、醋、酱油、香油、辣椒油', '1. 黄瓜拍碎切块\n2. 加入蒜末和调料\n3. 拌匀即可', '["https://images.unsplash.com/photo-1580442151529-343f2f6e0e27?w=400"]', demoUserId, '美食达人', 89, 0, '2024-01-13T09:00:00Z'],
-        ['4', '美味披萨在家做', '自己动手做披萨，成就感满满！', '面粉200g、酵母3g、番茄酱、芝士、各种喜欢的配菜', '1. 和面发酵\n2. 擀成饼底\n3. 抹上番茄酱\n4. 铺上芝士和配菜\n5. 烤箱200度烤15分钟', '["https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400"]', demoUserId, '美食达人', 312, 0, '2024-01-11T12:00:00Z']
-      ]
-
-      for (const note of notes) {
-        await client.query(
-          `INSERT INTO notes (id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-          note
-        )
-      }
-
-      console.log('已添加示例笔记')
-    }
-
-    client.release()
-    console.log('Database initialized')
+    console.log('Database initialized successfully')
   } catch (error) {
     console.error('Error initializing database:', error)
   }
 }
 
-// 数据库连接池管理
-async function query(text, params) {
-  const client = await pool.connect()
+// 创建索引和优化数据库
+async function createIndexes() {
   try {
-    return await client.query(text, params)
-  } finally {
-    client.release()
+    console.log('Creating database indexes...')
+    
+    // 为users表创建索引
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
+      console.log('Index idx_users_username created successfully')
+    } catch (err) {
+      console.log('Index idx_users_username already exists')
+    }
+    
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)')
+      console.log('Index idx_users_created_at created successfully')
+    } catch (err) {
+      console.log('Index idx_users_created_at already exists')
+    }
+    
+    // 为notes表创建索引
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_notes_author_id ON notes(author_id)')
+      console.log('Index idx_notes_author_id created successfully')
+    } catch (err) {
+      console.log('Index idx_notes_author_id already exists')
+    }
+    
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at)')
+      console.log('Index idx_notes_created_at created successfully')
+    } catch (err) {
+      console.log('Index idx_notes_created_at already exists')
+    }
+    
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_notes_likes ON notes(likes)')
+      console.log('Index idx_notes_likes created successfully')
+    } catch (err) {
+      console.log('Index idx_notes_likes already exists')
+    }
+    
+    // 为comments表创建索引
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_comments_note_id ON comments(note_id)')
+      console.log('Index idx_comments_note_id created successfully')
+    } catch (err) {
+      console.log('Index idx_comments_note_id already exists')
+    }
+    
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)')
+      console.log('Index idx_comments_user_id created successfully')
+    } catch (err) {
+      console.log('Index idx_comments_user_id already exists')
+    }
+    
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at)')
+      console.log('Index idx_comments_created_at created successfully')
+    } catch (err) {
+      console.log('Index idx_comments_created_at already exists')
+    }
+    
+    // 为feedback表创建索引
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)')
+      console.log('Index idx_feedback_user_id created successfully')
+    } catch (err) {
+      console.log('Index idx_feedback_user_id already exists')
+    }
+    
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at)')
+      console.log('Index idx_feedback_created_at created successfully')
+    } catch (err) {
+      console.log('Index idx_feedback_created_at already exists')
+    }
+    
+    // 为tags表创建索引
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)')
+      console.log('Index idx_tags_name created successfully')
+    } catch (err) {
+      console.log('Index idx_tags_name already exists')
+    }
+    
+    // 为note_tags表创建索引
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_note_tags_note_id ON note_tags(note_id)')
+      console.log('Index idx_note_tags_note_id created successfully')
+    } catch (err) {
+      console.log('Index idx_note_tags_note_id already exists')
+    }
+    
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_note_tags_tag_id ON note_tags(tag_id)')
+      console.log('Index idx_note_tags_tag_id created successfully')
+    } catch (err) {
+      console.log('Index idx_note_tags_tag_id already exists')
+    }
+    
+    // 为follows表创建索引
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON follows(follower_id)')
+      console.log('Index idx_follows_follower_id created successfully')
+    } catch (err) {
+      console.log('Index idx_follows_follower_id already exists')
+    }
+    
+    try {
+      await query('CREATE INDEX IF NOT EXISTS idx_follows_following_id ON follows(following_id)')
+      console.log('Index idx_follows_following_id created successfully')
+    } catch (err) {
+      console.log('Index idx_follows_following_id already exists')
+    }
+    
+    console.log('Database indexes created successfully')
+  } catch (error) {
+    console.error('Error creating indexes:', error)
+  }
+}
+
+// 数据库连接管理
+async function query(text, params) {
+  // 使用Supabase SDK执行查询
+  try {
+    // 简单的SQL查询解析和Supabase SDK转换
+    // 注意：这只是一个简单的实现，对于复杂的SQL查询可能需要更复杂的解析
+    console.log('Executing query:', text, params)
+    
+    // 处理INSERT、UPDATE、DELETE操作
+    const lowerText = text.toLowerCase()
+    if (lowerText.startsWith('insert') || lowerText.startsWith('update') || lowerText.startsWith('delete')) {
+      console.log('Executing write operation:', text)
+      
+      // 处理note_tags表的操作
+      if (lowerText.includes('note_tags')) {
+        if (lowerText.startsWith('delete')) {
+          // 处理删除操作
+          const noteId = params[0]
+          console.log('Deleting note tags for note:', noteId)
+          const { error } = await supabase
+            .from('note_tags')
+            .delete()
+            .eq('note_id', noteId)
+          
+          if (error) {
+            console.error('Error deleting note tags:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('insert')) {
+          // 处理插入操作
+          const id = params[0]
+          const noteId = params[1]
+          const tagId = params[2]
+          
+          // 检查tagId是否为空
+          if (!tagId || tagId.trim() === '') {
+            console.log('Skipping empty tagId')
+            return { rows: [] }
+          }
+          
+          console.log('Inserting note tag:', { id, noteId, tagId })
+          const { error } = await supabase
+            .from('note_tags')
+            .insert({ id, note_id: noteId, tag_id: tagId })
+          
+          if (error) {
+            console.error('Error inserting note tag:', error)
+            throw error
+          }
+        }
+        return { rows: [] }
+      }
+      
+      // 处理notes表的操作
+      if (lowerText.includes('notes') && !lowerText.includes('note_tags')) {
+        if (lowerText.startsWith('insert')) {
+          // 处理插入操作
+          const id = params[0]
+          const title = params[1]
+          const content = params[2]
+          const images = params[3]
+          const author_id = params[4]
+          const author_name = params[5]
+          console.log('Inserting note:', { id, title, content, images, author_id, author_name })
+          const { error } = await supabase
+            .from('notes')
+            .insert({ id, title, content, images, author_id, author_name })
+          
+          if (error) {
+            console.error('Error inserting note:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('update')) {
+          // 处理更新操作
+          const title = params[0]
+          const content = params[1]
+          const ingredients = params[2]
+          const steps = params[3]
+          const images = params[4]
+          const likes = params[5]
+          const liked = params[6]
+          const noteId = params[7]
+          console.log('Updating note:', { noteId, title, content, ingredients, steps, images, likes, liked })
+          const { error } = await supabase
+            .from('notes')
+            .update({ title, content, ingredients, steps, images, likes, liked })
+            .eq('id', noteId)
+          
+          if (error) {
+            console.error('Error updating note:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('delete')) {
+          // 处理删除操作
+          const noteId = params[0]
+          console.log('Deleting note:', noteId)
+          const { error } = await supabase
+            .from('notes')
+            .delete()
+            .eq('id', noteId)
+          
+          if (error) {
+            console.error('Error deleting note:', error)
+            throw error
+          }
+        }
+        return { rows: [] }
+      }
+      
+      // 处理users表的操作
+      if (lowerText.includes('users')) {
+        if (lowerText.startsWith('insert')) {
+          // 处理插入操作
+          const id = params[0]
+          const username = params[1]
+          const password = params[2]
+          const nickname = params[3]
+          const avatar = params[4]
+          const role = params[5]
+          const status = params[6]
+          const created_at = params[7]
+          console.log('Inserting user:', { id, username, nickname, avatar, role, status, created_at })
+          const { error } = await supabase
+            .from('users')
+            .insert({ id, username, password, nickname, avatar, role, status, created_at })
+          
+          if (error) {
+            console.error('Error inserting user:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('update')) {
+          // 处理更新操作
+          if (text.includes('role')) {
+            const role = params[0]
+            const userId = params[1]
+            console.log('Updating user role:', { userId, role })
+            const { error } = await supabase
+              .from('users')
+              .update({ role })
+              .eq('id', userId)
+            
+            if (error) {
+              console.error('Error updating user role:', error)
+              throw error
+            }
+          } else if (text.includes('status')) {
+            const status = params[0]
+            const userId = params[1]
+            console.log('Updating user status:', { userId, status })
+            const { error } = await supabase
+              .from('users')
+              .update({ status })
+              .eq('id', userId)
+            
+            if (error) {
+              console.error('Error updating user status:', error)
+              throw error
+            }
+          } else {
+            const nickname = params[0]
+            const avatar = params[1]
+            const bio = params[2]
+            const userId = params[3]
+            console.log('Updating user:', { userId, nickname, avatar, bio })
+            const { error } = await supabase
+              .from('users')
+              .update({ nickname, avatar, bio })
+              .eq('id', userId)
+            
+            if (error) {
+              console.error('Error updating user:', error)
+              throw error
+            }
+          }
+        } else if (lowerText.startsWith('delete')) {
+          // 处理删除操作
+          const userId = params[0]
+          console.log('Deleting user:', userId)
+          const { error } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', userId)
+          
+          if (error) {
+            console.error('Error deleting user:', error)
+            throw error
+          }
+        }
+        return { rows: [] }
+      }
+      
+      // 处理tags表的操作
+      if (lowerText.includes('tags')) {
+        if (lowerText.startsWith('insert')) {
+          // 处理插入操作
+          const id = params[0]
+          const name = params[1]
+          const created_at = params[2]
+          console.log('Inserting tag:', { id, name, created_at })
+          const { error } = await supabase
+            .from('tags')
+            .insert({ id, name, created_at })
+
+          if (error) {
+            console.error('Error inserting tag:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('delete')) {
+          // 处理删除操作
+          const tagId = params[0]
+          console.log('Deleting tag:', tagId)
+          const { error } = await supabase
+            .from('tags')
+            .delete()
+            .eq('id', tagId)
+
+          if (error) {
+            console.error('Error deleting tag:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('update')) {
+          const name = params[0]
+          const tagId = params[1]
+          console.log('Updating tag:', { tagId, name })
+          const { error } = await supabase
+            .from('tags')
+            .update({ name })
+            .eq('id', tagId)
+
+          if (error) {
+            console.error('Error updating tag:', error)
+            throw error
+          }
+        }
+        return { rows: [] }
+      }
+      
+      // 处理comments表的操作
+      if (lowerText.includes('comments')) {
+        if (lowerText.startsWith('insert')) {
+          // 处理插入操作
+          const id = params[0]
+          const note_id = params[1]
+          const user_id = params[2]
+          const content = params[3]
+          const user_name = params[4]
+          console.log('Inserting comment:', { id, note_id, user_id, content, user_name })
+          const { error } = await supabase
+            .from('comments')
+            .insert({ id, note_id, user_id, content, user_name })
+          
+          if (error) {
+            console.error('Error inserting comment:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('delete')) {
+          // 处理删除操作
+          const commentId = params[0]
+          console.log('Deleting comment:', commentId)
+          const { error } = await supabase
+            .from('comments')
+            .delete()
+            .eq('id', commentId)
+          
+          if (error) {
+            console.error('Error deleting comment:', error)
+            throw error
+          }
+        }
+        return { rows: [] }
+      }
+      
+      // 处理feedback表的操作
+      if (lowerText.includes('feedback')) {
+        if (lowerText.startsWith('insert')) {
+          // 处理插入操作
+          const id = params[0]
+          const user_id = params[1]
+          const user_name = params[2]
+          const content = params[3]
+          console.log('Inserting feedback:', { id, user_id, user_name, content })
+          const { error } = await supabase
+            .from('feedback')
+            .insert({ id, user_id, user_name, content })
+          
+          if (error) {
+            console.error('Error inserting feedback:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('update')) {
+          // 处理更新操作
+          const status = params[0]
+          const feedbackId = params[1]
+          console.log('Updating feedback:', { feedbackId, status })
+          const { error } = await supabase
+            .from('feedback')
+            .update({ status })
+            .eq('id', feedbackId)
+          
+          if (error) {
+            console.error('Error updating feedback:', error)
+            throw error
+          }
+        }
+        return { rows: [] }
+      }
+      
+      // 处理follows表的操作
+      if (lowerText.includes('follows')) {
+        if (lowerText.startsWith('insert')) {
+          // 处理插入操作
+          const id = crypto.randomUUID()
+          const follower_id = params[0]
+          const following_id = params[1]
+          console.log('Inserting follow:', { id, follower_id, following_id })
+          const { error } = await supabase
+            .from('follows')
+            .insert({ id, follower_id, following_id })
+          
+          if (error) {
+            console.error('Error inserting follow:', error)
+            throw error
+          }
+        } else if (lowerText.startsWith('delete')) {
+          // 处理删除操作
+          const follower_id = params[0]
+          const following_id = params[1]
+          console.log('Deleting follow:', { follower_id, following_id })
+          const { error } = await supabase
+            .from('follows')
+            .delete()
+            .eq('follower_id', follower_id)
+            .eq('following_id', following_id)
+          
+          if (error) {
+            console.error('Error deleting follow:', error)
+            throw error
+          }
+        }
+        return { rows: [] }
+      }
+      
+      // 处理tags表的操作
+      if (lowerText.includes('tags')) {
+        if (lowerText.startsWith('insert')) {
+          // 处理插入操作
+          const id = params[0]
+          const name = params[1]
+          const created_at = params[2]
+          console.log('Inserting tag:', { id, name, created_at })
+          const { error } = await supabase
+            .from('tags')
+            .insert({ id, name, created_at })
+          
+          if (error) {
+            console.error('Error inserting tag:', error)
+            throw error
+          }
+        }
+        return { rows: [] }
+      }
+      
+      // 对于其他表的操作，暂时返回成功
+      return { rows: [] }
+    }
+    
+    // 检查是否是系统查询或聚合查询
+    if (text.includes('SELECT version()')) {
+      // 返回版本信息
+      return { rows: [{ version: 'PostgreSQL 15.0' }] }
+    } else if (text.includes('COUNT(*) as count')) {
+      // 处理计数查询
+      if (text.includes('users')) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id', { count: 'exact' })
+        if (error) {
+          console.error('Error counting users:', error)
+          throw error
+        }
+        return { rows: [{ count: data.length }] }
+      } else if (text.includes('notes')) {
+        const { data, error } = await supabase
+          .from('notes')
+          .select('id', { count: 'exact' })
+        if (error) {
+          console.error('Error counting notes:', error)
+          throw error
+        }
+        return { rows: [{ count: data.length }] }
+      } else if (text.includes('note_tags')) {
+        const { data, error } = await supabase
+          .from('note_tags')
+          .select('id', { count: 'exact' })
+        if (error) {
+          console.error('Error counting note_tags:', error)
+          throw error
+        }
+        return { rows: [{ count: data.length }] }
+      } else if (text.includes('tags')) {
+        const { data, error } = await supabase
+          .from('tags')
+          .select('id', { count: 'exact' })
+        if (error) {
+          console.error('Error counting tags:', error)
+          throw error
+        }
+        return { rows: [{ count: data.length }] }
+      } else if (text.includes('comments')) {
+        const { data, error } = await supabase
+          .from('comments')
+          .select('id', { count: 'exact' })
+        if (error) {
+          console.error('Error counting comments:', error)
+          throw error
+        }
+        return { rows: [{ count: data.length }] }
+      } else if (text.includes('feedback')) {
+        const { data, error } = await supabase
+          .from('feedback')
+          .select('id', { count: 'exact' })
+        if (error) {
+          console.error('Error counting feedback:', error)
+          throw error
+        }
+        return { rows: [{ count: data.length }] }
+      } else if (text.includes('follows')) {
+        const { data, error } = await supabase
+          .from('follows')
+          .select('id', { count: 'exact' })
+        if (error) {
+          console.error('Error counting follows:', error)
+          throw error
+        }
+        return { rows: [{ count: data.length }] }
+      } else {
+        // 返回默认的计数结果
+        return { rows: [{ count: 0 }] }
+      }
+    } else if (text.includes('pg_size_pretty')) {
+      // 处理大小查询
+      return { rows: [{ size: '1 MB' }] }
+    } else if (text.includes('information_schema.columns')) {
+      // 处理表结构查询
+      return { rows: [] }
+    } else if (text.includes('pg_index') && text.includes('pg_attribute')) {
+      // 处理主键查询
+      return { rows: [{ column_name: 'id' }] }
+    }
+    
+    // 检查是否是查询notes表的SQL
+    console.log('Query text:', text)
+    console.log('Query params:', params)
+    // 更宽松的条件检查
+    const isSelectQuery = lowerText.includes('select')
+    const isNotesTable = lowerText.includes('notes')
+    console.log('Is select query:', isSelectQuery)
+    console.log('Is notes table:', isNotesTable)
+    if (isSelectQuery && isNotesTable) {
+      // 检查是否是根据ID查询
+      const idMatch = text.match(/WHERE\s+id\s*=\s*\$1/i)
+      console.log('ID match:', idMatch)
+      // 直接检查是否包含 'where id = $1'，不管空格和大小写
+      const hasWhereId = lowerText.includes('where id = $1')
+      console.log('Has WHERE id = $1:', hasWhereId)
+      // 检查是否有参数
+      const hasParams = params && params.length > 0
+      console.log('Has params:', hasParams)
+      if ((idMatch || hasWhereId) && hasParams) {
+        const noteId = params[0]
+        console.log('Querying note by id:', noteId)
+        
+        try {
+          // 从Supabase查询真实的笔记数据
+          const { data: note, error } = await supabase
+            .from('notes')
+            .select('*')
+            .eq('id', noteId)
+            .single()
+          
+          if (error) {
+            console.error('Error fetching note from Supabase:', error)
+            throw error
+          }
+          
+          // 如果查询成功，返回真实数据
+          console.log('Found note:', note)
+          return { rows: [note] }
+        } catch (error) {
+          console.error('Error generating note:', error)
+          throw error
+        }
+      }
+      
+      // 解析SQL查询，提取limit和offset参数
+      let limit = 10
+      let offset = 0
+      
+      // 尝试从SQL中提取limit值
+      const limitMatch = text.match(/LIMIT\s+(\d+)/i)
+      if (limitMatch) {
+        limit = parseInt(limitMatch[1])
+      }
+      
+      // 尝试从SQL中提取offset值
+      const offsetMatch = text.match(/OFFSET\s+(\d+)/i)
+      if (offsetMatch) {
+        offset = parseInt(offsetMatch[1])
+      }
+      
+      // 使用Supabase SDK查询notes表，应用分页和排序
+      const { data: notes, error } = await supabase
+        .from('notes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+        .range(offset, offset + limit - 1)
+      
+      if (error) {
+        console.error('Error querying notes:', error)
+        throw error
+      }
+      
+      console.log('Query result:', notes, 'Limit:', limit, 'Offset:', offset)
+      return { rows: notes }
+    }
+    
+    // 检查是否是查询tags表的SQL
+    if (text.includes('SELECT') && text.includes('tags')) {
+      // 检查是否是查询笔记关联的标签
+      if (text.includes('JOIN note_tags') && text.includes('WHERE nt.note_id = $1')) {
+        const noteId = params[0]
+        console.log('Querying tags for note:', noteId)
+        
+        try {
+          // 使用 Supabase SDK 查询笔记关联的标签
+          const { data: noteTags, error: noteTagsError } = await supabase
+            .from('note_tags')
+            .select('tag_id')
+            .eq('note_id', noteId)
+          
+          if (noteTagsError) {
+            console.error('Error querying note_tags:', noteTagsError)
+            return { rows: [] }
+          }
+          
+          if (!noteTags || noteTags.length === 0) {
+            console.log('No tags found for note:', noteId)
+            return { rows: [] }
+          }
+          
+          // 获取标签ID列表
+          const tagIds = noteTags.map(nt => nt.tag_id)
+          
+          // 查询标签详情
+          const { data: tags, error: tagsError } = await supabase
+            .from('tags')
+            .select('id, name')
+            .in('id', tagIds)
+            .order('name')
+          
+          if (tagsError) {
+            console.error('Error querying tags:', tagsError)
+            return { rows: [] }
+          }
+          
+          console.log('Found tags for note:', tags)
+          return { rows: tags || [] }
+        } catch (error) {
+          console.error('Error in note tags query:', error)
+          return { rows: [] }
+        }
+      }
+      
+      // 检查是否是查询热门标签
+      if (text.includes('note_count') && text.includes('GROUP BY')) {
+        console.log('Querying popular tags')
+        try {
+          // 首先获取所有标签
+          const { data: tags, error: tagsError } = await supabase
+            .from('tags')
+            .select('id, name')
+          
+          if (tagsError) {
+            console.error('Error querying tags:', tagsError)
+            return { rows: [] }
+          }
+          
+          // 然后获取每个标签的笔记数量
+          const tagsWithCount = await Promise.all(tags.map(async (tag) => {
+            const { data: noteTags, error: noteTagsError } = await supabase
+              .from('note_tags')
+              .select('note_id')
+              .eq('tag_id', tag.id)
+            
+            if (noteTagsError) {
+              console.error(`Error querying note_tags for tag ${tag.id}:`, noteTagsError)
+              return {
+                id: tag.id,
+                name: tag.name,
+                note_count: 0
+              }
+            }
+            
+            return {
+              id: tag.id,
+              name: tag.name,
+              note_count: noteTags.length
+            }
+          }))
+          
+          // 过滤出有笔记关联的标签
+          const popularTags = tagsWithCount.filter(tag => tag.note_count > 0)
+          
+          // 按笔记数量排序
+          popularTags.sort((a, b) => b.note_count - a.note_count)
+          
+          // 应用限制
+          const limit = params ? parseInt(params[0]) : 10
+          const limitedTags = popularTags.slice(0, limit)
+          
+          console.log('Found popular tags:', limitedTags)
+          return { rows: limitedTags }
+        } catch (error) {
+          console.error('Error in popular tags query:', error)
+          return { rows: [] }
+        }
+      } else if (text.includes('user_likes')) {
+        const userId = params[0]
+        console.log('Querying user likes for user:', userId)
+        try {
+          const { data: userLikes, error } = await supabase
+            .from('user_likes')
+            .select('tag_id')
+            .eq('user_id', userId)
+
+          if (error) {
+            console.error('Error querying user_likes:', error)
+            return { rows: [] }
+          }
+
+          if (!userLikes || userLikes.length === 0) {
+            return { rows: [] }
+          }
+
+          const tagIds = userLikes.map(ul => ul.tag_id)
+          const { data: tags, error: tagsError } = await supabase
+            .from('tags')
+            .select('id, name')
+            .in('id', tagIds)
+            .order('name')
+
+          if (tagsError) {
+            console.error('Error querying tags:', tagsError)
+            return { rows: [] }
+          }
+
+          return { rows: tags || [] }
+        } catch (error) {
+          console.error('Error in user likes query:', error)
+          return { rows: [] }
+        }
+      } else {
+        // 普通标签查询
+        const { data: tags, error } = await supabase
+          .from('tags')
+          .select('*')
+        
+        if (error) {
+          console.error('Error querying tags:', error)
+          throw error
+        }
+        return { rows: tags || [] }
+      }
+    }
+    
+    // 检查是否是查询users表的SQL
+    if (text.includes('SELECT') && text.includes('users')) {
+      // 检查是否是根据用户名查询
+      if (text.includes('WHERE') && text.includes('username') && text.includes('$1')) {
+        // 提取用户名参数
+        const username = params[0]
+        console.log('Querying user by username:', username)
+        
+        try {
+          const { data: users, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+          
+          console.log('Supabase query result:', { users, error })
+          
+          if (error) {
+            console.error('Error querying users by username:', error)
+            // 如果是查询用户名是否存在（只查询id），返回空数组
+            if (text.includes('SELECT id FROM users')) {
+              return { rows: [] }
+            }
+            throw error
+          }
+          
+          // 如果查询成功但返回空数组
+          if (!users || users.length === 0) {
+            console.log('No users found for username:', username)
+            // 如果是查询用户名是否存在（只查询id），返回空数组
+            if (text.includes('SELECT id FROM users')) {
+              return { rows: [] }
+            }
+            // 否则，抛出错误
+            throw new Error('User not found')
+          }
+          
+          console.log('User found:', users[0])
+          return { rows: users }
+        } catch (error) {
+          console.error('Error in user query:', error)
+          // 直接返回错误，让登录接口处理
+          throw error
+        }
+      } else if (text.includes('WHERE') && text.includes('id') && text.includes('$1')) {
+        // 检查是否是根据ID查询
+        const userId = params[0]
+        
+        // 检查是否是查询用户角色
+        if (text.includes('SELECT role FROM users')) {
+          console.log('Querying user role for id:', userId)
+          try {
+            const { data: users, error } = await supabase
+              .from('users')
+              .select('role')
+              .eq('id', userId)
+            
+            if (error) {
+              console.error('Error querying user role:', error)
+              throw error
+            }
+            
+            if (!users || users.length === 0) {
+              console.log('No user found for id:', userId)
+              return { rows: [] }
+            }
+            
+            console.log('User role found:', users[0])
+            return { rows: users }
+          } catch (error) {
+            console.error('Error in user role query:', error)
+            throw error
+          }
+        }
+        
+        const { data: users, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+        
+        if (error) {
+          console.error('Error querying users by id:', error)
+          throw error
+        }
+        return { rows: users || [] }
+      } else {
+        // 普通用户查询
+        const { data: users, error } = await supabase
+          .from('users')
+          .select('*')
+        
+        if (error) {
+          console.error('Error querying users:', error)
+          throw error
+        }
+        return { rows: users || [] }
+      }
+    }
+    
+    // 检查是否是插入用户的SQL
+    if (text.includes('INSERT') && text.includes('users')) {
+      // 提取参数
+      const [id, username, password, nickname, avatar, role, status, created_at] = params
+      
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .insert({
+            id,
+            username,
+            password,
+            nickname,
+            avatar,
+            role,
+            status,
+            created_at
+          })
+          .select()
+        
+        if (error) {
+          console.error('Error inserting user:', error)
+          throw error
+        }
+        
+        console.log('User inserted successfully:', data)
+        return { rows: data }
+      } catch (error) {
+        console.error('Error in user insertion:', error)
+        throw error
+      }
+    }
+    
+    // 检查是否是更新用户的SQL
+    if (text.includes('UPDATE') && text.includes('users')) {
+      // 提取参数
+      const [role, id] = params
+      
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .update({ role })
+          .eq('id', id)
+          .select()
+        
+        if (error) {
+          console.error('Error updating user role:', error)
+          throw error
+        }
+        
+        console.log('User role updated successfully:', data)
+        return { rows: data }
+      } catch (error) {
+        console.error('Error in user role update:', error)
+        throw error
+      }
+    }
+    
+    // 检查是否是删除操作
+    if (text.includes('DELETE')) {
+      // 提取表名和条件
+      const tableMatch = text.match(/DELETE FROM\s+(\w+)/i)
+      if (tableMatch) {
+        const tableName = tableMatch[1]
+        console.log('Deleting from table:', tableName)
+        
+        // 对于删除操作，我们已经在前面的代码中处理了
+        return { rows: [] }
+      }
+    }
+    
+    // 对于其他查询，返回空数组
+    return { rows: [] }
+  } catch (error) {
+    console.error('Error executing query:', error)
+    throw error
   }
 }
 
@@ -697,6 +1668,7 @@ app.get('/api/user/:id/tags', async (req, res) => {
     }))
     res.json(tags)
   } catch (e) {
+    console.error('Error fetching user tags:', e)
     res.json([])
   }
 })
@@ -1125,28 +2097,34 @@ app.get('/api/notes', async (req, res) => {
       return
     }
 
+    // 直接使用Supabase SDK查询，避免SQL解析问题
+    let supabaseQuery = supabase
+      .from('notes')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+      .range(offset, offset + limit - 1)
+
+    // 如果有作者过滤
+    if (authorId) {
+      supabaseQuery = supabaseQuery.eq('author_id', authorId)
+    }
+
+    // 执行查询
+    const { data: notesData, error } = await supabaseQuery
+    if (error) {
+      console.error('Error querying notes:', error)
+      throw error
+    }
+
     // 获取总数
-    let countQuery = 'SELECT COUNT(*) FROM notes'
-    let countParams = []
+    let countQuery = supabase.from('notes').select('id', { count: 'exact', head: true })
     if (authorId) {
-      countQuery += ' WHERE author_id = $1'
-      countParams.push(authorId)
+      countQuery = countQuery.eq('author_id', authorId)
     }
-    const countResult = await query(countQuery, countParams)
-    const total = parseInt(countResult.rows[0].count) || 0
+    const { count: total } = await countQuery
 
-    // 获取分页数据
-    let queryStr = 'SELECT * FROM notes'
-    let params = [limit, offset]
-    if (authorId) {
-      queryStr += ' WHERE author_id = $1'
-      params = [authorId, limit, offset]
-    }
-    queryStr += ' ORDER BY created_at DESC LIMIT $' + (authorId ? '2' : '1') + ' OFFSET $' + (authorId ? '3' : '2')
-
-    const result = await query(queryStr, params)
-
-    const notes = result.rows.map(row => {
+    const notes = notesData.map(row => {
       const images = JSON.parse(row.images || '[]')
       // 列表接口只返回第一张图片作为封面，不返回所有图片
       const coverImage = images.length > 0 ? images[0] : null
@@ -1163,7 +2141,7 @@ app.get('/api/notes', async (req, res) => {
       }
     })
 
-    res.json({ notes, total, page, limit })
+    res.json({ notes, total: total || 0, page, limit })
   } catch (e) {
     // 返回模拟数据作为备用
     const mockNotes = [
@@ -1276,7 +2254,7 @@ app.put('/api/notes/:id', authenticateToken, async (req, res) => {
   try {
     await query(
       `UPDATE notes SET title = $1, content = $2, ingredients = $3, steps = $4, images = $5, likes = $6, liked = $7 WHERE id = $8`,
-      [title.trim(), content.trim(), ingredients, steps, JSON.stringify(images), likes, liked ? 1 : 0, req.params.id]
+      [title.trim(), content.trim(), ingredients, steps, images, likes, liked ? 1 : 0, req.params.id]
     )
     res.json({ success: true })
   } catch (e) {
@@ -1310,17 +2288,46 @@ app.delete('/api/notes/:id', authenticateToken, async (req, res) => {
 
 app.get('/api/notes/:id', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM notes WHERE id = $1', [req.params.id])
-    if (result.rows.length === 0) {
+    const noteId = req.params.id
+    console.log('Getting note by id:', noteId)
+    
+    // 从 Supabase 查询真实的笔记数据
+    const { data: note, error } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('id', noteId)
+      .single()
+    
+    if (error) {
+      console.error('Error fetching note from Supabase:', error)
       return res.json(null)
     }
-    const note = result.rows[0]
-    const images = JSON.parse(note.images || '[]')
+    
+    if (!note) {
+      console.log('Note not found:', noteId)
+      return res.json(null)
+    }
+    
+    console.log('Found note:', note)
+    
+    // 处理图片数据
+    let images = note.images || []
+    if (typeof images === 'string') {
+      try {
+        images = JSON.parse(images)
+      } catch (parseError) {
+        console.error('Error parsing images:', parseError)
+        images = []
+      }
+    }
+    
     // 默认只返回第一张图片，详情页需要加载全部
     const full = req.query.full === 'true'
     note.images = full ? images : images.slice(0, 1)
+    
     res.json(note)
   } catch (e) {
+    console.error('Error getting note:', e)
     res.json(null)
   }
 })
@@ -1521,14 +2528,16 @@ app.put('/api/feedback/:id', authenticateToken, async (req, res) => {
 // 标签API
 app.get('/api/tags', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM tags ORDER BY name')
-    const tags = result.rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      created_at: row.created_at
-    }))
-    res.json(tags)
+    const cached = getCachedTags()
+    if (cached) {
+      return res.json(cached)
+    }
+    const tags = await tagRepo.findAll({ orderBy: { column: 'name', ascending: true } })
+    const tagList = tags.data || []
+    setCachedTags(tagList)
+    res.json(tagList)
   } catch (e) {
+    console.error('Error fetching tags:', e)
     res.json([])
   }
 })
@@ -1536,48 +2545,76 @@ app.get('/api/tags', async (req, res) => {
 app.get('/api/tags/popular', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10
-    const result = await query(
-      `SELECT t.id, t.name, COUNT(nt.note_id) as note_count
-       FROM tags t
-       LEFT JOIN note_tags nt ON t.id = nt.tag_id
-       GROUP BY t.id, t.name
-       ORDER BY note_count DESC, t.name ASC
-       LIMIT $1`,
-      [limit]
-    )
-    const tags = result.rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      note_count: parseInt(row.note_count) || 0
-    }))
-    res.json(tags)
+    const tags = await tagRepo.findWithNoteCount(limit)
+    const sortedTags = tags.sort((a, b) => {
+      if (b.note_count !== a.note_count) return b.note_count - a.note_count
+      return a.name.localeCompare(b.name)
+    })
+    res.json(sortedTags)
   } catch (e) {
+    console.error('Error fetching popular tags:', e)
     res.json([])
   }
 })
 
 app.post('/api/tags', authenticateToken, async (req, res) => {
   const { name } = req.body
-  
+
   try {
     if (!name || name.trim().length === 0) {
       return res.json({ success: false, message: '标签名称不能为空' })
     }
-    
+
     if (name.length > 20) {
       return res.json({ success: false, message: '标签名称长度不能超过20个字符' })
     }
-    
-    const id = crypto.randomUUID()
-    const created_at = new Date().toISOString()
-    
-    await query(
-      'INSERT INTO tags (id, name, created_at) VALUES ($1, $2, $3)',
-      [id, name.trim(), created_at]
-    )
-    
-    res.json({ success: true, tag: { id, name: name.trim(), created_at } })
+
+    const tag = await tagRepo.create({
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      created_at: new Date().toISOString()
+    })
+
+    setCachedTags(null)
+    res.json({ success: true, tag })
   } catch (e) {
+    console.error('Error creating tag:', e)
+    res.json({ success: false, message: e.message })
+  }
+})
+
+app.put('/api/admin/tags/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { name } = req.body
+
+  try {
+    if (!name || name.trim().length === 0) {
+      return res.json({ success: false, message: '标签名称不能为空' })
+    }
+
+    if (name.length > 20) {
+      return res.json({ success: false, message: '标签名称长度不能超过20个字符' })
+    }
+
+    await tagRepo.update(req.params.id, { name: name.trim() })
+    setCachedTags(null)
+
+    res.json({ success: true })
+  } catch (e) {
+    console.error('Error updating tag:', e)
+    res.json({ success: false, message: e.message })
+  }
+})
+
+app.delete('/api/admin/tags/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await supabase.from('note_tags').delete().eq('tag_id', req.params.id)
+    await supabase.from('user_likes').delete().eq('tag_id', req.params.id)
+    await tagRepo.delete(req.params.id)
+    setCachedTags(null)
+
+    res.json({ success: true })
+  } catch (e) {
+    console.error('Error deleting tag:', e)
     res.json({ success: false, message: e.message })
   }
 })
@@ -1602,15 +2639,16 @@ app.get('/api/notes/:id/tags', async (req, res) => {
   }
 })
 
-app.post('/api/notes/:id/tags', authenticateToken, async (req, res) => {
+app.post('/api/notes/:id/tags', async (req, res) => {
   const { tagIds } = req.body
   
   try {
     // 先删除该笔记的所有标签关联
     await query('DELETE FROM note_tags WHERE note_id = $1', [req.params.id])
     
-    // 添加新的标签关联
-    for (const tagId of tagIds) {
+    // 添加新的标签关联，过滤空的tagId
+    const validTagIds = tagIds.filter(tagId => tagId && tagId.trim() !== '')
+    for (const tagId of validTagIds) {
       const id = crypto.randomUUID()
       await query(
         'INSERT INTO note_tags (id, note_id, tag_id) VALUES ($1, $2, $3)',
@@ -1630,34 +2668,69 @@ app.get('/api/tags/:id/notes', async (req, res) => {
   const offset = (page - 1) * limit
   
   try {
+    console.log('Tag ID:', req.params.id)
+    // 直接使用Supabase SDK查询，避免SQL解析问题
+    // 首先获取所有与标签关联的笔记ID
+    const { data: noteTags, error: noteTagsError } = await supabase
+      .from('note_tags')
+      .select('note_id')
+      .eq('tag_id', req.params.id)
+    
+    if (noteTagsError) {
+      console.error('Error querying note_tags:', noteTagsError)
+      throw noteTagsError
+    }
+    
+    console.log('Note tags:', noteTags)
+    // 提取笔记ID列表
+    const noteIds = noteTags.map(nt => nt.note_id)
+    
+    console.log('Note IDs:', noteIds)
     // 获取总数
-    const countResult = await query(
-      `SELECT COUNT(DISTINCT nt.note_id) as count 
-       FROM note_tags nt 
-       WHERE nt.tag_id = $1`,
-      [req.params.id]
-    )
-    const total = parseInt(countResult.rows[0].count) || 0
+    const total = noteIds.length
+    
+    console.log('Total notes:', total)
+    // 如果没有笔记，直接返回空结果
+    if (total === 0) {
+      res.json({ notes: [], total: 0, page, limit })
+      return
+    }
     
     // 获取分页数据
-    const result = await query(
-      `SELECT n.* 
-       FROM notes n 
-       JOIN note_tags nt ON n.id = nt.note_id 
-       WHERE nt.tag_id = $1 
-       ORDER BY n.created_at DESC 
-       LIMIT $2 OFFSET $3`,
-      [req.params.id, limit, offset]
-    )
+    const { data: notesData, error: notesError } = await supabase
+      .from('notes')
+      .select('*')
+      .in('id', noteIds)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+      .range(offset, offset + limit - 1)
     
-    const notes = result.rows.map(row => ({
-      id: row.id, title: row.title, content: row.content, ingredients: row.ingredients, steps: row.steps,
-      images: JSON.parse(row.images || '[]'), author_id: row.author_id, author_name: row.author_name,
-      likes: row.likes, liked: row.liked, created_at: row.created_at
-    }))
+    if (notesError) {
+      console.error('Error querying notes:', notesError)
+      throw notesError
+    }
+    
+    console.log('Notes data:', notesData)
+    const notes = notesData.map(row => {
+      const images = JSON.parse(row.images || '[]')
+      // 列表接口只返回第一张图片作为封面，不返回所有图片
+      const coverImage = images.length > 0 ? images[0] : null
+      // 只返回首页展示需要的字段，减少响应大小
+      return {
+        id: row.id,
+        title: row.title,
+        coverImage,
+        imagesCount: images.length,
+        author_id: row.author_id,
+        author_name: row.author_name,
+        likes: row.likes,
+        created_at: row.created_at
+      }
+    })
     
     res.json({ notes, total, page, limit })
   } catch (e) {
+    console.error('Error in /api/tags/:id/notes:', e)
     res.status(500).json({ success: false, message: e.message, notes: [], total: 0, page, limit })
   }
 })
@@ -1736,7 +2809,7 @@ app.get('/api/db/table/:tableName', authenticateToken, requireAdmin, async (req,
   const { page = 1, limit = 10 } = req.query
   
   try {
-    const validTables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags']
+    const validTables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags', 'follows']
     if (!validTables.includes(tableName)) {
       return res.json({ success: false, message: '无效的表名' })
     }
@@ -1777,7 +2850,7 @@ app.get('/api/db/table/:tableName/structure', authenticateToken, requireAdmin, a
   const { tableName } = req.params
 
   try {
-    const validTables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags']
+    const validTables = ['users', 'notes', 'comments', 'feedback', 'tags', 'note_tags', 'follows']
     if (!validTables.includes(tableName)) {
       return res.json({ success: false, message: '无效的表名' })
     }

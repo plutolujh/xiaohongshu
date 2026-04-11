@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getAllNotes, deleteNoteById, updateUser, getHeaders, getFollowCounts, getUserTags } from '../utils/db'
 import Loading from '../components/Loading'
 import FollowButton from '../components/FollowButton'
+import ImageCropper from '../components/ImageCropper'
 import './Profile.css'
+import heic2any from 'heic2any'
 
 export default function Profile({ isOtherUser = false, userId: propUserId }) {
   const { user, logout, refreshUser } = useAuth()
@@ -19,6 +21,7 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
   const [formData, setFormData] = useState({
     nickname: user?.nickname || '',
     avatar: user?.avatar || '',
+    background: user?.background || '',
     bio: user?.bio || '',
     oldPassword: '',
     newPassword: ''
@@ -29,6 +32,10 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
   const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
   const [userTags, setUserTags] = useState([])
   const [loadingUser, setLoadingUser] = useState(isOtherUser)
+  const avatarInputRef = useRef(null)
+  const backgroundInputRef = useRef(null)
+  const [cropperImage, setCropperImage] = useState(null)
+  const [cropperType, setCropperType] = useState(null)
   const navigate = useNavigate()
 
   // 确定显示哪个用户的信息
@@ -133,10 +140,167 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const compressImage = (dataUrl, quality = 0.8, maxWidth = 200, maxHeight = 200) => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        let width = img.width
+        let height = img.height
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height
+          height = maxHeight
+        }
+        canvas.width = width
+        canvas.height = height
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.src = dataUrl
+    })
+  }
+
   const handleAvatarChange = () => {
-    // 生成随机的DiceBear头像
-    const randomSeed = Math.random().toString(36).substring(2, 10)
-    setFormData(prev => ({ ...prev, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}` }))
+    avatarInputRef.current?.click()
+  }
+
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/heic', 'image/heif']
+    const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')
+
+    if (!validTypes.includes(file.type) && !isHeic) {
+      setMessage('支持 JPEG、PNG、GIF、HEIC 格式')
+      return
+    }
+
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      setMessage('图片大小不能超过 5MB')
+      return
+    }
+
+    setLoading(true)
+    try {
+      let processedFile = file
+      if (isHeic || file.type === 'image/heic' || file.type === 'image/heif') {
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.9
+        })
+        processedFile = new File([convertedBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+          type: 'image/jpeg'
+        })
+      }
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        setCropperImage(reader.result)
+        setCropperType('avatar')
+        setLoading(false)
+      }
+      reader.readAsDataURL(processedFile)
+    } catch (error) {
+      console.error('处理图片失败:', error)
+      setMessage('处理图片失败')
+      setLoading(false)
+    }
+    e.target.value = ''
+  }
+
+  const handleBackgroundChange = () => {
+    backgroundInputRef.current?.click()
+  }
+
+  const handleBackgroundFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/heic', 'image/heif']
+    const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')
+
+    if (!validTypes.includes(file.type) && !isHeic) {
+      setMessage('支持 JPEG、PNG、GIF、HEIC 格式')
+      return
+    }
+
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      setMessage('图片大小不能超过 5MB')
+      return
+    }
+
+    try {
+      let processedFile = file
+      if (isHeic || file.type === 'image/heic' || file.type === 'image/heif') {
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.9
+        })
+        processedFile = new File([convertedBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+          type: 'image/jpeg'
+        })
+      }
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        setCropperImage(reader.result)
+        setCropperType('background')
+      }
+      reader.readAsDataURL(processedFile)
+    } catch (error) {
+      console.error('处理图片失败:', error)
+      setMessage('处理图片失败')
+    }
+    e.target.value = ''
+  }
+
+  const handleCropConfirm = async (croppedImage) => {
+    setCropperImage(null)
+    const type = cropperType
+    setCropperType(null)
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`
+        },
+        body: JSON.stringify({ image: croppedImage, filename: `cropped_${Date.now()}.jpg`, folder: type === 'avatar' ? 'avatars' : 'backgrounds' })
+      })
+      const data = await response.json()
+      if (data.success) {
+        if (type === 'avatar') {
+          setFormData(prev => ({ ...prev, avatar: data.url }))
+          setMessage('头像上传成功')
+        } else {
+          setFormData(prev => ({ ...prev, background: data.url }))
+          setMessage('背景图上传成功')
+        }
+      } else {
+        setMessage(type === 'avatar' ? '头像上传失败' : '背景图上传失败')
+      }
+    } catch (error) {
+      console.error('上传失败:', error)
+      setMessage(type === 'avatar' ? '头像上传失败' : '背景图上传失败')
+    }
+    setLoading(false)
+  }
+
+  const handleCropCancel = () => {
+    setCropperImage(null)
+    setCropperType(null)
   }
 
   const handleSubmit = async (e) => {
@@ -146,7 +310,7 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
     setLoading(true)
     try {
       // 更新用户信息
-      const userData = { nickname: formData.nickname, avatar: formData.avatar, bio: formData.bio }
+      const userData = { nickname: formData.nickname, avatar: formData.avatar, background: formData.background, bio: formData.bio }
       const result = await updateUser(user.id, userData)
       
       if (result.success) {
@@ -218,6 +382,16 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
 
   return (
     <div className="profile">
+      {cropperImage && (
+        <ImageCropper
+          image={cropperImage}
+          aspectRatio={cropperType === 'avatar' ? 1 : 3}
+          maxWidth={cropperType === 'avatar' ? 200 : 700}
+          maxHeight={cropperType === 'avatar' ? 200 : 233}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
+      )}
       {isEditing ? (
         <div className="profile-edit">
           <h2>编辑个人资料</h2>
@@ -227,7 +401,42 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
               <label>头像</label>
               <div className="profile-avatar-upload">
                 <img src={formData.avatar} alt={formData.nickname} className="profile-avatar" />
-                <button type="button" onClick={handleAvatarChange} className="profile-avatar-btn">更换头像</button>
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/heic,image/heif"
+                  onChange={handleAvatarFileChange}
+                  style={{ display: 'none' }}
+                />
+                <div className="profile-avatar-buttons">
+                  <button type="button" onClick={handleAvatarChange} className="profile-avatar-btn" disabled={loading}>
+                    {loading ? '上传中...' : '上传头像'}
+                  </button>
+                  <button type="button" onClick={() => {
+                    const randomSeed = Math.random().toString(36).substring(2, 10)
+                    setFormData(prev => ({ ...prev, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}` }))
+                  }} className="profile-avatar-random-btn" disabled={loading}>
+                    更换头像
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="profile-form-group">
+              <label>背景图</label>
+              <div className="profile-background-upload">
+                {formData.background && (
+                  <img src={formData.background} alt="背景图" className="profile-background-preview" />
+                )}
+                <input
+                  type="file"
+                  ref={backgroundInputRef}
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/heic,image/heif"
+                  onChange={handleBackgroundFileChange}
+                  style={{ display: 'none' }}
+                />
+                <button type="button" onClick={handleBackgroundChange} className="profile-background-btn" disabled={loading}>
+                  {loading ? '上传中...' : (formData.background ? '更换背景图' : '上传背景图')}
+                </button>
               </div>
             </div>
             <div className="profile-form-group">
@@ -265,8 +474,8 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
         </div>
       ) : (
         <>
-          <div className="profile-header">
-            <img src={displayUser.avatar} alt={displayUser.nickname} className="profile-avatar" />
+          <div className="profile-header" style={displayUser.background ? { backgroundImage: `url(${displayUser.background})`, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: '200px' } : {}}>
+            <img src={displayUser.avatar} alt={displayUser.nickname} className="profile-avatar" style={displayUser.background ? { border: '3px solid #fff' } : {}} />
             <h2 className="profile-nickname">{displayUser.nickname}</h2>
             <p className="profile-username">@{displayUser.username}</p>
             {displayUser.bio && <p className="profile-bio">{displayUser.bio}</p>}

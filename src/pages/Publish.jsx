@@ -133,11 +133,35 @@ export default function Publish() {
 
         const reader = new FileReader()
         reader.onloadend = () => {
-          compressImage(reader.result, 0.8).then(compressedImage => {
-            newImages.push(compressedImage)
-            loadedCount++
-            if (loadedCount === files.length) {
-              setImages(prevImages => [...prevImages, ...newImages])
+          compressImage(reader.result, 0.8).then(async (compressedImage) => {
+            try {
+              // 上传到服务器
+              const response = await fetch('/api/upload', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                  image: compressedImage,
+                  filename: processedFile.name
+                })
+              })
+              
+              const data = await response.json()
+              if (data.success) {
+                newImages.push(data.url)
+              } else {
+                throw new Error(data.message || '上传失败')
+              }
+            } catch (uploadError) {
+              console.error('上传失败:', uploadError)
+              setError('图片上传失败，请重试')
+            } finally {
+              loadedCount++
+              if (loadedCount === files.length && newImages.length > 0) {
+                setImages(prevImages => [...prevImages, ...newImages])
+              }
             }
           })
         }
