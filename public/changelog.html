@@ -28,7 +28,122 @@ a:hover{text-decoration:underline}
 <h1>📝 项目修改日志</h1>
 
 <div class="section">
-<h2 class="version">[1.9.0] - 2026-04-08</h2>
+<h2 class="version">[2.1.0] - 2026-04-11</h2>
+
+<h3>技术改进</h3>
+
+<h4>1. 数据库外键关系建立</h4>
+<p><strong>操作:</strong> 为数据库表添加外键约束</p>
+<p><strong>实现:</strong> 通过 Supabase CLI 执行 SQL，建立以下外键关系：</p>
+<ul>
+<li><code>note_tags.note_id</code> → <code>notes.id</code> (CASCADE)</li>
+<li><code>note_tags.tag_id</code> → <code>tags.id</code> (CASCADE)</li>
+<li><code>comments.note_id</code> → <code>notes.id</code> (CASCADE)</li>
+<li><code>comments.user_id</code> → <code>users.id</code> (CASCADE)</li>
+<li><code>notes.author_id</code> → <code>users.id</code> (SET NULL)</li>
+<li><code>feedback.user_id</code> → <code>users.id</code> (SET NULL)</li>
+<li><code>follows.follower_id</code> → <code>users.id</code> (CASCADE)</li>
+<li><code>follows.following_id</code> → <code>users.id</code> (CASCADE)</li>
+</ul>
+<p><strong>影响:</strong> 确保数据一致性和引用完整性，级联删除功能正常工作</p>
+
+<h4>2. 热门标签查询优化</h4>
+<p><strong>操作:</strong> 优化 <code>TagRepository.findWithNoteCount</code> 方法</p>
+<p><strong>原实现:</strong> N+1 查询（每个标签一次查询）</p>
+<p><strong>新实现:</strong> 单次 JOIN 查询，使用 <code>select('*, note_tags(count)')</code></p>
+<p><strong>性能提升:</strong> 查询时间从 ~5-7s 降至 ~1s</p>
+<p><strong>影响:</strong> 大幅提升首页标签加载速度</p>
+
+<h4>3. follows 表数据类型修复</h4>
+<p><strong>问题:</strong> <code>follower_id</code> 和 <code>following_id</code> 存储为 text 类型</p>
+<p><strong>修复:</strong> 转换为 uuid 类型并添加外键约束</p>
+<p><strong>影响:</strong> 数据类型统一，关联查询正常工作</p>
+
+<h3>文档更新</h3>
+
+<h4>1. GLOSSARY.md 数据库章节更新</h4>
+<ul>
+<li>更新 <code>follows</code> 表结构（follower_id/following_id 类型改为 uuid）</li>
+<li>新增"外键约束"章节，记录所有外键关系</li>
+<li>更新章节编号</li>
+</ul>
+</div>
+
+<div class="section">
+<h2 class="version">[2.0.0] - 2026-04-11</h2>
+
+<h3>新增功能</h3>
+
+<h4>1. 管理员标签管理功能</h4>
+<p><strong>功能:</strong> 管理员可以新增、修改、删除标签</p>
+<p><strong>API端点:</strong></p>
+<ul>
+<li><code>PUT /api/admin/tags/:id</code> - 修改标签</li>
+<li><code>DELETE /api/admin/tags/:id</code> - 删除标签（同时删除关联数据）</li>
+</ul>
+<p><strong>前端页面:</strong> <code>/tag-management</code></p>
+<p><strong>菜单位置:</strong> 导航栏 → 用户管理后 → 标签管理</p>
+<p><strong>影响:</strong> 管理员可以更方便地管理系统的标签内容</p>
+</div>
+
+<div class="section">
+<h2 class="version">[1.9.0] - 2026-04-11</h2>
+
+<h3>功能修复</h3>
+
+<h4>1. 笔记编辑标签选择功能修复</h4>
+<p><strong>问题:</strong> 笔记编辑时标签选择不生效</p>
+<p><strong>原因:</strong> 后端API未正确处理标签保存操作</p>
+<p><strong>修复:</strong> 修改 server.js 中的标签保存API，正确处理 note_tags 表的 INSERT 和 DELETE 操作</p>
+<p><strong>影响:</strong> 用户现在可以在编辑笔记时正常选择和保存标签</p>
+
+<h4>2. 首页标签显示功能优化</h4>
+<p><strong>问题:</strong> 首页缺少"健身"标签</p>
+<p><strong>原因:</strong> 首页使用 /api/tags/popular 端点，只显示有笔记关联的标签</p>
+<p><strong>修复:</strong> 清理 note_tags 表中的无效数据（tag_id 为 null 的记录），并为笔记添加标签关联</p>
+<p><strong>影响:</strong> 确保所有有笔记关联的标签都能在首页热门标签中显示</p>
+
+<h4>3. 标签添加功能修复</h4>
+<p><strong>问题:</strong> 增加标签时提示错误</p>
+<p><strong>原因:</strong> server.js 中的 query 函数没有处理 tags 表的 INSERT 操作</p>
+<p><strong>修复:</strong> 在 query 函数中添加对 tags 表 INSERT 操作的处理逻辑，使用 Supabase SDK 执行插入操作</p>
+<p><strong>影响:</strong> 用户现在可以正常添加新标签，不会再看到错误提示</p>
+
+<h3>功能验证</h3>
+
+<h4>1. 热门标签功能验证</h4>
+<p><strong>测试:</strong> 验证首页热门标签显示逻辑</p>
+<p><strong>结果:</strong> 热门标签按笔记数量排序，最多显示10个，只显示有笔记关联的标签</p>
+<p><strong>影响:</strong> 提升用户体验，让用户快速找到热门内容</p>
+
+<h4>2. 笔记详情标签显示验证</h4>
+<p><strong>测试:</strong> 验证笔记详情页标签显示功能</p>
+<p><strong>结果:</strong> 笔记详情页正确显示关联的标签</p>
+<p><strong>影响:</strong> 提升笔记内容的可读性和分类清晰度</p>
+
+<h3>技术改进</h3>
+
+<h4>1. 数据库清理</h4>
+<p><strong>操作:</strong> 清理 note_tags 表中的无效数据</p>
+<p><strong>实现:</strong> 删除 tag_id 为 null 的记录，为笔记添加有效的标签关联</p>
+<p><strong>影响:</strong> 提高数据库数据质量，确保标签功能正常运行</p>
+
+<h4>2. API 优化</h4>
+<p><strong>操作:</strong> 优化 /api/tags/popular 和 /api/notes/:id/tags 端点</p>
+<p><strong>实现:</strong> 确保返回正确的标签数据，支持标签数量统计</p>
+<p><strong>影响:</strong> 提升标签相关API的性能和准确性</p>
+
+<h3>修改文件</h3>
+<ul>
+<li>server.js</li>
+<li>src/pages/EditNote.jsx</li>
+<li>src/pages/Home.jsx</li>
+<li>src/pages/NoteDetail.jsx</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>[1.8.0] - 2026-04-08</h2>
 
 <h3>笔记分享功能</h3>
 <p><strong>功能:</strong> 在笔记详情页添加分享按钮，点击后生成分享图片供用户保存后分享到微信朋友圈</p>
@@ -56,7 +171,7 @@ a:hover{text-decoration:underline}
 </div>
 
 <div class="section">
-<h2>[1.8.0] - 2026-04-07</h2>
+<h2>[1.7.0] - 2026-04-07</h2>
 <ul>
 <li>系统状态功能仅对管理员可见</li>
 <li>移除修改日志菜单</li>

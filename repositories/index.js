@@ -1,0 +1,6 @@
+export { BaseRepository } from './BaseRepository.js'
+export { TagRepository } from './TagRepository.js'
+export { NoteRepository } from './NoteRepository.js'
+export { UserRepository } from './UserRepository.js'
+export { CommentRepository } from './CommentRepository.js'
+export { FeedbackRepository } from './FeedbackRepository.js'

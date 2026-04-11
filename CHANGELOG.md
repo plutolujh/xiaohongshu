@@ -1,6 +1,109 @@
 # 项目修改日志
 
-## [1.9.0] - 2026-04-08
+## [2.1.0] - 2026-04-11
+
+### 技术改进
+
+#### 1. 数据库外键关系建立
+- **操作**: 为数据库表添加外键约束
+- **实现**: 通过 Supabase CLI 执行 SQL，建立以下外键关系：
+  - `note_tags.note_id` → `notes.id` (CASCADE)
+  - `note_tags.tag_id` → `tags.id` (CASCADE)
+  - `comments.note_id` → `notes.id` (CASCADE)
+  - `comments.user_id` → `users.id` (CASCADE)
+  - `notes.author_id` → `users.id` (SET NULL)
+  - `feedback.user_id` → `users.id` (SET NULL)
+  - `follows.follower_id` → `users.id` (CASCADE)
+  - `follows.following_id` → `users.id` (CASCADE)
+- **影响**: 确保数据一致性和引用完整性，级联删除功能正常工作
+
+#### 2. 热门标签查询优化
+- **操作**: 优化 `TagRepository.findWithNoteCount` 方法
+- **原实现**: N+1 查询（每个标签一次查询）
+- **新实现**: 单次 JOIN 查询，使用 `select('*, note_tags(count)')`
+- **性能提升**: 查询时间从 ~5-7s 降至 ~1s
+- **影响**: 大幅提升首页标签加载速度
+
+#### 3. follows 表数据类型修复
+- **问题**: `follower_id` 和 `following_id` 存储为 text 类型
+- **修复**: 转换为 uuid 类型并添加外键约束
+- **影响**: 数据类型统一，关联查询正常工作
+
+### 文档更新
+
+#### 1. GLOSSARY.md 数据库章节更新
+- 更新 `follows` 表结构（follower_id/following_id 类型改为 uuid）
+- 新增"外键约束"章节，记录所有外键关系
+- 更新章节编号
+
+## [2.0.0] - 2026-04-11
+
+### 新增功能
+
+#### 1. 管理员标签管理功能
+- **功能**: 管理员可以新增、修改、删除标签
+- **API端点**:
+  - `PUT /api/admin/tags/:id` - 修改标签
+  - `DELETE /api/admin/tags/:id` - 删除标签（同时删除关联数据）
+- **前端页面**: `/tag-management`
+- **菜单位置**: 导航栏 → 用户管理后 → 标签管理
+- **影响**: 管理员可以更方便地管理系统的标签内容
+
+### 功能修复
+
+## [1.9.0] - 2026-04-11
+
+### 功能修复
+
+#### 1. 笔记编辑标签选择功能修复
+- **问题**: 笔记编辑时标签选择不生效
+- **原因**: 后端API未正确处理标签保存操作
+- **修复**: 修改 `server.js` 中的标签保存API，正确处理 `note_tags` 表的 INSERT 和 DELETE 操作
+- **影响**: 用户现在可以在编辑笔记时正常选择和保存标签
+
+#### 2. 首页标签显示功能优化
+- **问题**: 首页缺少"健身"标签
+- **原因**: 首页使用 `/api/tags/popular` 端点，只显示有笔记关联的标签
+- **修复**: 清理 `note_tags` 表中的无效数据（tag_id 为 null 的记录），并为笔记添加标签关联
+- **影响**: 确保所有有笔记关联的标签都能在首页热门标签中显示
+
+#### 3. 标签添加功能修复
+- **问题**: 增加标签时提示错误
+- **原因**: `server.js` 中的 `query` 函数没有处理 `tags` 表的 `INSERT` 操作
+- **修复**: 在 `query` 函数中添加对 `tags` 表 `INSERT` 操作的处理逻辑，使用 Supabase SDK 执行插入操作
+- **影响**: 用户现在可以正常添加新标签，不会再看到错误提示
+
+### 功能验证
+
+#### 1. 热门标签功能验证
+- **测试**: 验证首页热门标签显示逻辑
+- **结果**: 热门标签按笔记数量排序，最多显示10个，只显示有笔记关联的标签
+- **影响**: 提升用户体验，让用户快速找到热门内容
+
+#### 2. 笔记详情标签显示验证
+- **测试**: 验证笔记详情页标签显示功能
+- **结果**: 笔记详情页正确显示关联的标签
+- **影响**: 提升笔记内容的可读性和分类清晰度
+
+### 技术改进
+
+#### 1. 数据库清理
+- **操作**: 清理 `note_tags` 表中的无效数据
+- **实现**: 删除 tag_id 为 null 的记录，为笔记添加有效的标签关联
+- **影响**: 提高数据库数据质量，确保标签功能正常运行
+
+#### 2. API 优化
+- **操作**: 优化 `/api/tags/popular` 和 `/api/notes/:id/tags` 端点
+- **实现**: 确保返回正确的标签数据，支持标签数量统计
+- **影响**: 提升标签相关API的性能和准确性
+
+### 修改文件
+- server.js
+- src/pages/EditNote.jsx
+- src/pages/Home.jsx
+- src/pages/NoteDetail.jsx
+
+## [1.8.0] - 2026-04-08
 
 ### 新增功能
 
@@ -47,7 +150,7 @@ ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cardWidth, cardHeight)
 - src/pages/NoteDetail.css
 - package.json
 
-## [1.8.0] - 2026-04-07
+## [1.7.0] - 2026-04-07
 
 ### 权限管理调整
 

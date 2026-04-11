@@ -12,7 +12,8 @@ export default {
     noteManagement: 'Note Management',
     feedback: 'Feedback',
     feedbackManagement: 'Feedback Management',
-    databaseManagement: 'Database Management'
+    databaseManagement: 'Database Management',
+    tagManagement: 'Tag Management'
   },
   
   // 首页
@@ -22,6 +23,7 @@ export default {
     popularTags: 'Popular Tags',
     noNotes: 'No notes yet',
     loadMore: 'Load More',
+    loadMoreTags: 'Load More Tags',
     loading: 'Loading...',
     loadingMore: 'Loading more...',
     searchPlaceholder: 'Search notes...',
@@ -208,7 +210,21 @@ export default {
     loading: 'Loading...',
     emptyData: 'No data in table'
   },
-  
+
+  // 标签管理
+  tagManagement: {
+    title: 'Tag Management',
+    totalTags: 'Total Tags',
+    addTag: 'Add New Tag',
+    tagNamePlaceholder: 'Enter tag name...',
+    add: 'Add',
+    adding: 'Adding...',
+    existingTags: 'Existing Tags',
+    noTags: 'No tags yet',
+    confirmDelete: 'Are you sure to delete this tag?',
+    loading: 'Loading...'
+  },
+
   // 页脚
   footer: {
     copyright: '© 2026 Food Notes',

@@ -1,7 +1,7 @@
 {
   "name": "xiaohongshu-food-share",
   "private": true,
-  "version": "1.8.0",
+  "version": "2.1.0",
   "type": "module",
   "repository": {
     "type": "git",
@@ -24,6 +24,7 @@
     "pm2:monit": "pm2 monit xiaohongshu-server"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
     "@vitejs/plugin-react": "^4.2.0",
     "bcrypt": "^6.0.0",
     "chart.js": "^4.5.1",

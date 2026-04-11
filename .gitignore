@@ -44,7 +44,7 @@ temp/
 
 
 screenshot*
-
+test*
 
 #prompt
 prompt.md
@@ -54,3 +54,5 @@ fix.md
 
 test*
 .env*
+
+.backupnote*

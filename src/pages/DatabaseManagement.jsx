@@ -227,15 +227,6 @@ export default function DatabaseManagement() {
                       <span className="table-count">{table.count} 行</span>
                       <span className="table-size">{table.size}</span>
                     </div>
-                    <button
-                      className="structure-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        loadTableStructure(table.name)
-                      }}
-                    >
-                      结构
-                    </button>
                   </div>
                 </li>
               ))}
@@ -245,7 +236,7 @@ export default function DatabaseManagement() {
 
         {/* 表数据 */}
         <div className="table-data">
-          {selectedTable && (
+          {selectedTable ? (
             <div>
               <div className="table-header">
                 <h2>{selectedTable} 表</h2>
@@ -321,6 +312,11 @@ export default function DatabaseManagement() {
                   </div>
                 </div>
               ) : null}
+            </div>
+          ) : (
+            <div className="empty-table-selection">
+              <h2>请选择一个表</h2>
+              <p>从左侧的表列表中选择一个表来查看其数据</p>
             </div>
           )}
         </div>

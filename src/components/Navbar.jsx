@@ -43,6 +43,7 @@ export default function Navbar() {
                 <>
                   <Link to="/system-status" className="navbar-link">{t('navbar.systemStatus', language)}</Link>
                   <Link to="/user-management" className="navbar-link">{t('navbar.userManagement', language)}</Link>
+                  <Link to="/tag-management" className="navbar-link">{t('navbar.tagManagement', language)}</Link>
                   <Link to="/note-management" className="navbar-link">{t('navbar.noteManagement', language)}</Link>
                   <Link to="/feedback-management" className="navbar-link">{t('navbar.feedbackManagement', language)}</Link>
                   <Link to="/database-management" className="navbar-link">{t('navbar.databaseManagement', language)}</Link>
@@ -108,6 +109,7 @@ export default function Navbar() {
                 <>
                   <Link to="/system-status" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.systemStatus', language)}</Link>
                   <Link to="/user-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.userManagement', language)}</Link>
+                  <Link to="/tag-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.tagManagement', language)}</Link>
                   <Link to="/note-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.noteManagement', language)}</Link>
                   <Link to="/feedback-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.feedbackManagement', language)}</Link>
                   <Link to="/database-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.databaseManagement', language)}</Link>

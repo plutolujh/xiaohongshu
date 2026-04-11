@@ -12,7 +12,8 @@ export default {
     noteManagement: '笔记管理',
     feedback: '意见反馈',
     feedbackManagement: '意见管理',
-    databaseManagement: '数据库管理'
+    databaseManagement: '数据库管理',
+    tagManagement: '标签管理'
   },
   
   // 首页
@@ -22,6 +23,7 @@ export default {
     popularTags: '热门标签',
     noNotes: '暂无笔记',
     loadMore: '加载更多',
+    loadMoreTags: '加载更多标签',
     loading: '加载中...',
     loadingMore: '加载更多中...',
     searchPlaceholder: '搜索笔记...',
@@ -208,7 +210,21 @@ export default {
     loading: '加载中...',
     emptyData: '表中暂无数据'
   },
-  
+
+  // 标签管理
+  tagManagement: {
+    title: '标签管理',
+    totalTags: '标签总数',
+    addTag: '添加新标签',
+    tagNamePlaceholder: '输入标签名称...',
+    add: '添加',
+    adding: '添加中...',
+    existingTags: '已有标签',
+    noTags: '暂无标签',
+    confirmDelete: '确定删除此标签？',
+    loading: '加载中...'
+  },
+
   // 页脚
   footer: {
     copyright: '© 2026 美食笔记',

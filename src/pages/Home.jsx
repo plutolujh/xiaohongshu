@@ -21,13 +21,19 @@ export default function Home() {
   const [popularTags, setPopularTags] = useState([])
   const [selectedTag, setSelectedTag] = useState('')
   const [tagsLoading, setTagsLoading] = useState(false)
+  const [loadingMoreTags, setLoadingMoreTags] = useState(false)
+  const [tagLimit, setTagLimit] = useState(10)
+  const [allTagsLoaded, setAllTagsLoaded] = useState(false)
   const [infiniteScroll, setInfiniteScroll] = useState(false)
   const loaderRef = useRef(null)
 
   useEffect(() => {
-    loadNotes()
-    loadPopularTags()
-  }, [page, pageSize, authorId])
+    // 只有当没有选择标签时，才调用 loadNotes() 函数
+    if (selectedTag === '') {
+      loadNotes()
+    }
+    loadPopularTags(tagLimit)
+  }, [page, pageSize, authorId, selectedTag, tagLimit])
 
   // 无限滚动：使用 IntersectionObserver 检测滚动到底部
   useEffect(() => {
@@ -81,19 +87,35 @@ export default function Home() {
     }
   }
 
-  const loadPopularTags = async () => {
-    setTagsLoading(true)
+  const loadPopularTags = async (limit = 10, append = false) => {
+    const loadingState = append ? setLoadingMoreTags : setTagsLoading
+    loadingState(true)
     try {
-      const tags = await fetch(`/api/tags/popular?limit=10`, {
+      const tags = await fetch(`/api/tags/popular?limit=${limit}`, {
         headers: getHeaders()
       })
       .then(response => response.json())
-      setPopularTags(tags)
+      if (append) {
+        setPopularTags(prev => [...prev, ...tags])
+      } else {
+        setPopularTags(tags)
+      }
+      // 检查是否所有标签都已加载
+      if (tags.length < limit) {
+        setAllTagsLoaded(true)
+      }
     } catch (err) {
       console.error('Error loading popular tags:', err)
     } finally {
-      setTagsLoading(false)
+      loadingState(false)
     }
+  }
+
+  const loadMoreTags = async () => {
+    if (loadingMoreTags || allTagsLoaded) return
+    const newLimit = tagLimit + 10
+    setTagLimit(newLimit)
+    await loadPopularTags(newLimit, true)
   }
 
   const handleTagFilter = async (tagId) => {
@@ -102,15 +124,17 @@ export default function Home() {
       setPage(1)
       loadNotes()
     } else {
-      setSelectedTag(tagId)
       try {
         setLoading(true)
         const data = await fetch(`/api/tags/${tagId}/notes?page=1&limit=${pageSize}`, {
-          headers: getHeaders()
+          headers: getHeaders(),
+          cache: 'no-cache' // 避免浏览器缓存响应
         })
         .then(response => response.json())
+        // 先设置笔记数据，然后再设置 selectedTag 和 page 状态
         setNotes(data.notes)
         setTotal(data.total || 0)
+        setSelectedTag(tagId)
         setPage(1)
       } catch (err) {
         console.error('Error filtering notes by tag:', err)
@@ -180,6 +204,19 @@ export default function Home() {
                   <span className="tag-count">({tag.note_count})</span>
                 </button>
               ))}
+              {!allTagsLoaded && (
+                <button
+                  className="tag-button load-more-tags"
+                  onClick={loadMoreTags}
+                  disabled={loadingMoreTags}
+                >
+                  {loadingMoreTags ? (
+                    <Loading text={t('home.loading', language)} size="small" />
+                  ) : (
+                    t('home.loadMoreTags', language)
+                  )}
+                </button>
+              )}
             </div>
           ) : (
             <div className="tags-empty">
