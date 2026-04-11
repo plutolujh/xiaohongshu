@@ -140,7 +140,7 @@ export default function Publish() {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  'Authorization': `Bearer ${user?.token}`
                 },
                 body: JSON.stringify({
                   image: compressedImage,
@@ -279,7 +279,7 @@ export default function Publish() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${user?.token}`
           },
           body: JSON.stringify({ tagIds })
         })

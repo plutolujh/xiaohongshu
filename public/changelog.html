@@ -28,7 +28,82 @@ a:hover{text-decoration:underline}
 <h1>📝 项目修改日志</h1>
 
 <div class="section">
+<h2 class="version">[2.2.0] - 2026-04-11</h2>
+
+<h3>Bug 修复</h3>
+
+<h4>1. 首页笔记头像不更新</h4>
+<p><strong>问题:</strong> 首页笔记卡片中显示的头像没有随用户更新而更新</p>
+<p><strong>原因:</strong> API 返回的笔记数据中头像字段未正确返回</p>
+<p><strong>修复:</strong> 修改 API `/api/notes` 返回 <code>author_avatar</code> 字段</p>
+<p><strong>修改文件:</strong></p>
+<ul>
+<li><code>server.js</code> - 添加 author_avatar 字段到 SELECT 查询</li>
+<li><code>src/components/NoteCard.jsx</code> - 优先使用用户上传的头像显示</li>
+</ul>
+
+<h3>功能优化</h3>
+
+<h4>1. 服务器启动日志精简</h4>
+<p><strong>问题:</strong> 服务器启动时输出大量索引创建日志</p>
+<p><strong>修复:</strong> 重构 <code>createIndexes</code> 函数，移除冗余的 console.log 语句</p>
+<p><strong>影响:</strong> 服务器启动日志更简洁，便于调试</p>
+
+<h3>新增功能</h3>
+
+<h4>1. 背景图片上传功能（代码已实现，暂未开放）</h4>
+<p><strong>功能:</strong> 为用户提供个人资料页面上传背景图片的功能</p>
+<p><strong>实现状态:</strong> 代码已完整实现，UI 入口已隐藏</p>
+<p><strong>技术实现:</strong></p>
+<ul>
+<li>新增 <code>backgrounds</code> 存储文件夹</li>
+<li>后端 API 支持背景图片上传</li>
+<li>前端支持图片裁剪和上传</li>
+<li>个人资料页面添加背景图片容器样式</li>
+</ul>
+<p><strong>修改文件:</strong></p>
+<ul>
+<li><code>server.js</code> - 添加 backgrounds 存储配置</li>
+<li><code>src/pages/Profile.jsx</code> - 添加背景上传组件</li>
+<li><code>src/pages/Profile.css</code> - 添加背景图片容器样式</li>
+</ul>
+
+<div class="section">
 <h2 class="version">[2.1.0] - 2026-04-11</h2>
+
+<h3>Bug 修复</h3>
+
+<h4>1. 头像裁剪坐标计算错误</h4>
+<p><strong>问题:</strong> 使用 <code>object-fit: contain</code> 时，裁剪区域与实际截取的图片不一致</p>
+<p><strong>原因:</strong></p>
+<ol>
+<li>非正方形图片会产生 letterbox（黑边），导致坐标偏移</li>
+<li>原代码假设整容器都是图片，没有计算 letterbox 偏移量</li>
+<li>负数坐标和边界超出未做处理</li>
+</ol>
+<p><strong>修复:</strong></p>
+<ol>
+<li>计算 letterbox 偏移量（当图片比例与容器不同时）</li>
+<li>使用 <code>Math.max(0, ...)</code> 防止负坐标</li>
+<li>使用 <code>Math.min(...)</code> 确保裁剪区域不超出原图边界</li>
+</ol>
+<p><strong>修改文件:</strong></p>
+<ul>
+<li><code>src/components/ImageCropper.jsx</code> - 修复 handleConfirm 函数的裁剪计算逻辑</li>
+<li><code>src/components/ImageCropper.css</code> - 将 <code>object-fit: cover</code> 改为 <code>contain</code></li>
+</ul>
+
+<h4>2. 头像文件夹上传路径错误</h4>
+<p><strong>问题:</strong> 头像上传到 <code>files/</code> 文件夹而非 <code>avatars/</code> 文件夹</p>
+<p><strong>原因:</strong> server.js 中判断条件 <code>folder === 'avatar'</code> 与前端发送的 <code>'avatars'</code> 不匹配</p>
+<p><strong>修复:</strong> 将判断条件改为 <code>folder === 'avatars'</code></p>
+<p><strong>修改文件:</strong> <code>server.js</code></p>
+
+<h4>3. 发布笔记图片上传失败</h4>
+<p><strong>问题:</strong> 发布笔记时图片上传失败</p>
+<p><strong>原因:</strong> Publish.jsx 使用 <code>localStorage.getItem('token')</code> 获取 token，但实际 token 存储在 <code>xiaohongshu_current_user</code> 中（sessionStorage）</p>
+<p><strong>修复:</strong> 改为使用 <code>user?.token</code>（来自 useAuth hook）</p>
+<p><strong>修改文件:</strong> <code>src/pages/Publish.jsx</code></p>
 
 <h3>技术改进</h3>
 

@@ -103,9 +103,10 @@ export default function NoteCard({ note, onNoteUpdate }) {
         <div className="note-card-footer">
           <div className="note-card-author">
             <img
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${authorId}`}
+              src={localNote.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorId}`}
               alt={authorName}
               className="note-card-avatar"
+              onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorId}` }}
             />
             <span className="note-card-username">{authorName}</span>
             <FollowButton userId={authorId} size="small" showText={false} />

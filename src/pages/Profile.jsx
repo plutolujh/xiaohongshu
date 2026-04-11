@@ -385,9 +385,9 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
       {cropperImage && (
         <ImageCropper
           image={cropperImage}
-          aspectRatio={cropperType === 'avatar' ? 1 : 3}
+          aspectRatio={cropperType === 'avatar' ? 1 : 3.5}
           maxWidth={cropperType === 'avatar' ? 200 : 700}
-          maxHeight={cropperType === 'avatar' ? 200 : 233}
+          maxHeight={cropperType === 'avatar' ? 200 : 200}
           onConfirm={handleCropConfirm}
           onCancel={handleCropCancel}
         />
@@ -421,7 +421,7 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
                 </div>
               </div>
             </div>
-            <div className="profile-form-group">
+            <div className="profile-form-group" style={{ display: 'none' }}>
               <label>背景图</label>
               <div className="profile-background-upload">
                 {formData.background && (
@@ -474,35 +474,38 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
         </div>
       ) : (
         <>
-          <div className="profile-header" style={displayUser.background ? { backgroundImage: `url(${displayUser.background})`, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: '200px' } : {}}>
-            <img src={displayUser.avatar} alt={displayUser.nickname} className="profile-avatar" style={displayUser.background ? { border: '3px solid #fff' } : {}} />
-            <h2 className="profile-nickname">{displayUser.nickname}</h2>
-            <p className="profile-username">@{displayUser.username}</p>
-            {displayUser.bio && <p className="profile-bio">{displayUser.bio}</p>}
+          <div className="profile-header-container">
+            <div className="profile-background" style={displayUser.background && displayUser.background.startsWith('http') ? { backgroundImage: `url(${displayUser.background})` } : {}} />
+            <div className="profile-header">
+              <img src={displayUser.avatar} alt={displayUser.nickname} className="profile-avatar" />
+              <h2 className="profile-nickname">{displayUser.nickname}</h2>
+              <p className="profile-username">@{displayUser.username}</p>
+              {displayUser.bio && <p className="profile-bio">{displayUser.bio}</p>}
 
-            {/* 关注/粉丝数量 */}
-            <div className="profile-follow-counts">
-              <Link to={`/users/${displayUser.id}/following`} className="profile-follow-link">
-                <span className="profile-follow-num">{followCounts.following}</span>
-                <span className="profile-follow-label">关注</span>
-              </Link>
-              <Link to={`/users/${displayUser.id}/followers`} className="profile-follow-link">
-                <span className="profile-follow-num">{followCounts.followers}</span>
-                <span className="profile-follow-label">粉丝</span>
-              </Link>
-            </div>
-
-            {/* 喜欢的标签 */}
-            {userTags.length > 0 && (
-              <div className="profile-tags">
-                <span className="profile-tags-label">喜欢的标签</span>
-                <div className="profile-tags-list">
-                  {userTags.map(tag => (
-                    <span key={tag.id} className="profile-tag">{tag.name}</span>
-                  ))}
-                </div>
+              {/* 关注/粉丝数量 */}
+              <div className="profile-follow-counts">
+                <Link to={`/users/${displayUser.id}/following`} className="profile-follow-link">
+                  <span className="profile-follow-num">{followCounts.following}</span>
+                  <span className="profile-follow-label">关注</span>
+                </Link>
+                <Link to={`/users/${displayUser.id}/followers`} className="profile-follow-link">
+                  <span className="profile-follow-num">{followCounts.followers}</span>
+                  <span className="profile-follow-label">粉丝</span>
+                </Link>
               </div>
-            )}
+
+              {/* 喜欢的标签 */}
+              {userTags.length > 0 && (
+                <div className="profile-tags">
+                  <span className="profile-tags-label">喜欢的标签</span>
+                  <div className="profile-tags-list">
+                    {userTags.map(tag => (
+                      <span key={tag.id} className="profile-tag">{tag.name}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="profile-actions">
