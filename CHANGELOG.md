@@ -1,6 +1,68 @@
 # 项目修改日志
 
+## [2.2.0] - 2026-04-11
+
+### Bug 修复
+
+#### 1. 首页笔记头像不更新
+- **问题**: 首页笔记卡片中显示的头像没有随用户更新而更新
+- **原因**: API 返回的笔记数据中头像字段未正确返回
+- **修复**: 修改 API `/api/notes` 返回 `author_avatar` 字段
+- **修改文件**:
+  - `server.js` - 添加 author_avatar 字段到 SELECT 查询
+  - `src/components/NoteCard.jsx` - 优先使用用户上传的头像显示
+
+### 功能优化
+
+#### 1. 服务器启动日志精简
+- **问题**: 服务器启动时输出大量索引创建日志
+- **修复**: 重构 `createIndexes` 函数，移除冗余的 console.log 语句
+- **影响**: 服务器启动日志更简洁，便于调试
+
+### 新增功能
+
+#### 1. 背景图片上传功能（代码已实现，暂未开放）
+- **功能**: 为用户提供个人资料页面上传背景图片的功能
+- **实现状态**: 代码已完整实现，UI 入口已隐藏
+- **技术实现**:
+  - 新增 `backgrounds` 存储文件夹
+  - 后端 API 支持背景图片上传
+  - 前端支持图片裁剪和上传
+  - 个人资料页面添加背景图片容器样式
+- **修改文件**:
+  - `server.js` - 添加 backgrounds 存储配置
+  - `src/pages/Profile.jsx` - 添加背景上传组件
+  - `src/pages/Profile.css` - 添加背景图片容器样式
+
 ## [2.1.0] - 2026-04-11
+
+### Bug 修复
+
+#### 1. 头像裁剪坐标计算错误
+- **问题**: 使用 `object-fit: contain` 时，裁剪区域与实际截取的图片不一致
+- **原因**:
+  1. 非正方形图片会产生 letterbox（黑边），导致坐标偏移
+  2. 原代码假设整容器都是图片，没有计算 letterbox 偏移量
+  3. 负数坐标和边界超出未做处理
+- **修复**:
+  1. 计算 letterbox 偏移量（当图片比例与容器不同时）
+  2. 使用 `Math.max(0, ...)` 防止负坐标
+  3. 使用 `Math.min(...)` 确保裁剪区域不超出原图边界
+- **修改文件**:
+  - `src/components/ImageCropper.jsx` - 修复 handleConfirm 函数的裁剪计算逻辑
+  - `src/components/ImageCropper.css` - 将 `object-fit: cover` 改为 `contain`
+
+#### 2. 头像文件夹上传路径错误
+- **问题**: 头像上传到 `files/` 文件夹而非 `avatars/` 文件夹
+- **原因**: server.js 中判断条件 `folder === 'avatar'` 与前端发送的 `'avatars'` 不匹配
+- **修复**: 将判断条件改为 `folder === 'avatars'`
+- **修改文件**: `server.js`
+
+#### 3. 发布笔记图片上传失败
+- **问题**: 发布笔记时图片上传失败
+- **原因**: Publish.jsx 使用 `localStorage.getItem('token')` 获取 token，但实际 token 存储在 `xiaohongshu_current_user` 中（sessionStorage）
+- **修复**: 改为使用 `user?.token`（来自 useAuth hook）
+- **修改文件**: `src/pages/Publish.jsx`
 
 ### 技术改进
 

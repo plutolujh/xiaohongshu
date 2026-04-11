@@ -8,7 +8,7 @@ export default function Footer() {
   const { themeMode, setTheme, ThemeMode } = useTheme()
   const { language } = useI18n()
   const [appInfo, setAppInfo] = useState({
-    version: '2.1.0',
+    version: '2.2.0',
     lastPublishTime: new Date().toLocaleString()
   })
 

@@ -287,8 +287,15 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
     
     // 生成唯一文件名
     const uniqueFilename = `${Date.now()}_${crypto.randomUUID()}_${filename}`
-    // 头像放 avatars 文件夹，其他放 files 文件夹
-    const filePath = folder === 'avatar' ? `avatars/${uniqueFilename}` : `files/${uniqueFilename}`
+    // 头像放 avatars 文件夹，背景放 backgrounds 文件夹，其他放 files 文件夹
+    let filePath
+    if (folder === 'avatars') {
+      filePath = `avatars/${uniqueFilename}`
+    } else if (folder === 'backgrounds') {
+      filePath = `backgrounds/${uniqueFilename}`
+    } else {
+      filePath = `files/${uniqueFilename}`
+    }
     
     // 上传到Supabase Storage
     const { data, error } = await supabase.storage
@@ -494,139 +501,40 @@ async function initDb() {
 
 // 创建索引和优化数据库
 async function createIndexes() {
-  try {
-    console.log('Creating database indexes...')
-    
-    // 为users表创建索引
+  const indexes = [
+    ['idx_users_username', 'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)'],
+    ['idx_users_created_at', 'CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)'],
+    ['idx_notes_author_id', 'CREATE INDEX IF NOT EXISTS idx_notes_author_id ON notes(author_id)'],
+    ['idx_notes_created_at', 'CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at)'],
+    ['idx_notes_likes', 'CREATE INDEX IF NOT EXISTS idx_notes_likes ON notes(likes)'],
+    ['idx_comments_note_id', 'CREATE INDEX IF NOT EXISTS idx_comments_note_id ON comments(note_id)'],
+    ['idx_comments_user_id', 'CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)'],
+    ['idx_comments_created_at', 'CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at)'],
+    ['idx_feedback_user_id', 'CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)'],
+    ['idx_feedback_created_at', 'CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at)'],
+    ['idx_tags_name', 'CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)'],
+    ['idx_note_tags_note_id', 'CREATE INDEX IF NOT EXISTS idx_note_tags_note_id ON note_tags(note_id)'],
+    ['idx_note_tags_tag_id', 'CREATE INDEX IF NOT EXISTS idx_note_tags_tag_id ON note_tags(tag_id)'],
+    ['idx_follows_follower_id', 'CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON follows(follower_id)'],
+    ['idx_follows_following_id', 'CREATE INDEX IF NOT EXISTS idx_follows_following_id ON follows(following_id)']
+  ]
+  
+  for (const [name, sql] of indexes) {
     try {
-      await query('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
-      console.log('Index idx_users_username created successfully')
+      await query(sql)
     } catch (err) {
-      console.log('Index idx_users_username already exists')
+      // 忽略索引已存在的错误
     }
-    
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)')
-      console.log('Index idx_users_created_at created successfully')
-    } catch (err) {
-      console.log('Index idx_users_created_at already exists')
-    }
-    
-    // 为notes表创建索引
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_notes_author_id ON notes(author_id)')
-      console.log('Index idx_notes_author_id created successfully')
-    } catch (err) {
-      console.log('Index idx_notes_author_id already exists')
-    }
-    
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at)')
-      console.log('Index idx_notes_created_at created successfully')
-    } catch (err) {
-      console.log('Index idx_notes_created_at already exists')
-    }
-    
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_notes_likes ON notes(likes)')
-      console.log('Index idx_notes_likes created successfully')
-    } catch (err) {
-      console.log('Index idx_notes_likes already exists')
-    }
-    
-    // 为comments表创建索引
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_comments_note_id ON comments(note_id)')
-      console.log('Index idx_comments_note_id created successfully')
-    } catch (err) {
-      console.log('Index idx_comments_note_id already exists')
-    }
-    
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)')
-      console.log('Index idx_comments_user_id created successfully')
-    } catch (err) {
-      console.log('Index idx_comments_user_id already exists')
-    }
-    
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at)')
-      console.log('Index idx_comments_created_at created successfully')
-    } catch (err) {
-      console.log('Index idx_comments_created_at already exists')
-    }
-    
-    // 为feedback表创建索引
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)')
-      console.log('Index idx_feedback_user_id created successfully')
-    } catch (err) {
-      console.log('Index idx_feedback_user_id already exists')
-    }
-    
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at)')
-      console.log('Index idx_feedback_created_at created successfully')
-    } catch (err) {
-      console.log('Index idx_feedback_created_at already exists')
-    }
-    
-    // 为tags表创建索引
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)')
-      console.log('Index idx_tags_name created successfully')
-    } catch (err) {
-      console.log('Index idx_tags_name already exists')
-    }
-    
-    // 为note_tags表创建索引
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_note_tags_note_id ON note_tags(note_id)')
-      console.log('Index idx_note_tags_note_id created successfully')
-    } catch (err) {
-      console.log('Index idx_note_tags_note_id already exists')
-    }
-    
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_note_tags_tag_id ON note_tags(tag_id)')
-      console.log('Index idx_note_tags_tag_id created successfully')
-    } catch (err) {
-      console.log('Index idx_note_tags_tag_id already exists')
-    }
-    
-    // 为follows表创建索引
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON follows(follower_id)')
-      console.log('Index idx_follows_follower_id created successfully')
-    } catch (err) {
-      console.log('Index idx_follows_follower_id already exists')
-    }
-    
-    try {
-      await query('CREATE INDEX IF NOT EXISTS idx_follows_following_id ON follows(following_id)')
-      console.log('Index idx_follows_following_id created successfully')
-    } catch (err) {
-      console.log('Index idx_follows_following_id already exists')
-    }
-    
-    console.log('Database indexes created successfully')
-  } catch (error) {
-    console.error('Error creating indexes:', error)
   }
+  console.log('Database indexes ready')
 }
 
 // 数据库连接管理
 async function query(text, params) {
-  // 使用Supabase SDK执行查询
   try {
-    // 简单的SQL查询解析和Supabase SDK转换
-    // 注意：这只是一个简单的实现，对于复杂的SQL查询可能需要更复杂的解析
-    console.log('Executing query:', text, params)
-    
-    // 处理INSERT、UPDATE、DELETE操作
     const lowerText = text.toLowerCase()
     if (lowerText.startsWith('insert') || lowerText.startsWith('update') || lowerText.startsWith('delete')) {
-      console.log('Executing write operation:', text)
+      console.log('Executing write operation:', text.substring(0, 50) + '...')
       
       // 处理note_tags表的操作
       if (lowerText.includes('note_tags')) {
@@ -672,16 +580,23 @@ async function query(text, params) {
       if (lowerText.includes('notes') && !lowerText.includes('note_tags')) {
         if (lowerText.startsWith('insert')) {
           // 处理插入操作
+          // SQL: INSERT INTO notes (id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at)
+          // VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           const id = params[0]
           const title = params[1]
           const content = params[2]
-          const images = params[3]
-          const author_id = params[4]
-          const author_name = params[5]
-          console.log('Inserting note:', { id, title, content, images, author_id, author_name })
+          const ingredients = params[3]
+          const steps = params[4]
+          const images = params[5]
+          const author_id = params[6]
+          const author_name = params[7]
+          const likes = params[8]
+          const liked = params[9]
+          const created_at = params[10]
+          console.log('Inserting note:', { id, title, content, images, author_id, author_name, likes, liked, created_at })
           const { error } = await supabase
             .from('notes')
-            .insert({ id, title, content, images, author_id, author_name })
+            .insert({ id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at })
           
           if (error) {
             console.error('Error inserting note:', error)
@@ -1066,13 +981,8 @@ async function query(text, params) {
     }
     
     // 检查是否是查询notes表的SQL
-    console.log('Query text:', text)
-    console.log('Query params:', params)
-    // 更宽松的条件检查
     const isSelectQuery = lowerText.includes('select')
     const isNotesTable = lowerText.includes('notes')
-    console.log('Is select query:', isSelectQuery)
-    console.log('Is notes table:', isNotesTable)
     if (isSelectQuery && isNotesTable) {
       // 检查是否是根据ID查询
       const idMatch = text.match(/WHERE\s+id\s*=\s*\$1/i)
@@ -2124,11 +2034,28 @@ app.get('/api/notes', async (req, res) => {
     }
     const { count: total } = await countQuery
 
+    // 获取所有笔记的作者ID
+    const authorIds = [...new Set(notesData.map(row => row.author_id).filter(Boolean))]
+    
+    // 批量查询作者头像
+    let authorsMap = {}
+    if (authorIds.length > 0) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, avatar')
+        .in('id', authorIds)
+      
+      if (usersData) {
+        usersData.forEach(user => {
+          authorsMap[user.id] = user.avatar
+        })
+      }
+    }
+
     const notes = notesData.map(row => {
       const images = JSON.parse(row.images || '[]')
-      // 列表接口只返回第一张图片作为封面，不返回所有图片
       const coverImage = images.length > 0 ? images[0] : null
-      // 只返回首页展示需要的字段，减少响应大小
+      const authorAvatar = authorsMap[row.author_id] || null
       return {
         id: row.id,
         title: row.title,
@@ -2136,6 +2063,7 @@ app.get('/api/notes', async (req, res) => {
         imagesCount: images.length,
         author_id: row.author_id,
         author_name: row.author_name,
+        author_avatar: authorAvatar,
         likes: row.likes,
         created_at: row.created_at
       }
@@ -2710,12 +2638,26 @@ app.get('/api/tags/:id/notes', async (req, res) => {
       throw notesError
     }
     
-    console.log('Notes data:', notesData)
+    // 批量查询作者头像
+    const authorIds = [...new Set(notesData.map(row => row.author_id).filter(Boolean))]
+    let authorsMap = {}
+    if (authorIds.length > 0) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, avatar')
+        .in('id', authorIds)
+      
+      if (usersData) {
+        usersData.forEach(user => {
+          authorsMap[user.id] = user.avatar
+        })
+      }
+    }
+    
     const notes = notesData.map(row => {
       const images = JSON.parse(row.images || '[]')
-      // 列表接口只返回第一张图片作为封面，不返回所有图片
       const coverImage = images.length > 0 ? images[0] : null
-      // 只返回首页展示需要的字段，减少响应大小
+      const authorAvatar = authorsMap[row.author_id] || null
       return {
         id: row.id,
         title: row.title,
@@ -2723,6 +2665,7 @@ app.get('/api/tags/:id/notes', async (req, res) => {
         imagesCount: images.length,
         author_id: row.author_id,
         author_name: row.author_name,
+        author_avatar: authorAvatar,
         likes: row.likes,
         created_at: row.created_at
       }

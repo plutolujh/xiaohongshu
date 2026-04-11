@@ -56,8 +56,10 @@ export async function getUserTags(userId) {
 }
 
 export async function findUserById(id) {
-  const users = await getAllUsers()
-  return users.find(u => u.id === id)
+  const res = await fetch(`${API_BASE}/user/${id}`, {
+    headers: getHeaders()
+  })
+  return res.json()
 }
 
 export async function updateUser(id, userData) {
