@@ -255,7 +255,7 @@ export default function Publish() {
     }
     
     const newNote = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       title: title.trim(),
       content: parsedContent,
       ingredients: parsedIngredients,
@@ -270,7 +270,12 @@ export default function Publish() {
 
     setLoading(true)
     try {
-      await createNote(newNote)
+      const result = await createNote(newNote)
+      if (!result || !result.success) {
+        setError(result?.message || '发布失败，请稍后重试')
+        setLoading(false)
+        return
+      }
       
       // 如果有选择标签，为笔记添加标签
       if (selectedTags.length > 0) {

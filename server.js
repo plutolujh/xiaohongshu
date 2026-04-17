@@ -285,8 +285,10 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
     const base64Data = image.split(';base64,').pop()
     const buffer = Buffer.from(base64Data, 'base64')
     
-    // 生成唯一文件名
-    const uniqueFilename = `${Date.now()}_${crypto.randomUUID()}_${filename}`
+    // 生成唯一文件名，并清理原始文件名中的非法字符
+    const ext = filename.substring(filename.lastIndexOf('.')) || '.jpg'
+    const sanitizedName = filename.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 50)
+    const uniqueFilename = `${Date.now()}_${crypto.randomUUID()}_${sanitizedName}${ext}`
     // 头像放 avatars 文件夹，背景放 backgrounds 文件夹，其他放 files 文件夹
     let filePath
     if (folder === 'avatars') {
