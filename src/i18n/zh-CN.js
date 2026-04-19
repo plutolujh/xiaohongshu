@@ -13,7 +13,8 @@ export default {
     feedback: '意见反馈',
     feedbackManagement: '意见管理',
     databaseManagement: '数据库管理',
-    tagManagement: '标签管理'
+    tagManagement: '标签管理',
+    myUploads: '我的上传'
   },
   
   // 首页

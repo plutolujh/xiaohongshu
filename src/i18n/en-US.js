@@ -13,7 +13,8 @@ export default {
     feedback: 'Feedback',
     feedbackManagement: 'Feedback Management',
     databaseManagement: 'Database Management',
-    tagManagement: 'Tag Management'
+    tagManagement: 'Tag Management',
+    myUploads: 'My Uploads'
   },
   
   // 首页

@@ -23,6 +23,7 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
     avatar: user?.avatar || '',
     background: user?.background || '',
     bio: user?.bio || '',
+    background_blur: user?.background_blur ?? 0,
     oldPassword: '',
     newPassword: ''
   })
@@ -36,6 +37,8 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
   const backgroundInputRef = useRef(null)
   const [cropperImage, setCropperImage] = useState(null)
   const [cropperType, setCropperType] = useState(null)
+  const [backgroundPreview, setBackgroundPreview] = useState(null)
+  const [originalBackground, setOriginalBackground] = useState(null)
   const navigate = useNavigate()
 
   // 确定显示哪个用户的信息
@@ -78,6 +81,19 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
     }
     fetchUserTags()
   }, [isOtherUser, effectiveUserId, user])
+
+  useEffect(() => {
+    if (user && !isEditing) {
+      setFormData(prev => ({
+        ...prev,
+        nickname: user.nickname || '',
+        avatar: user.avatar || '',
+        background: user.background || '',
+        bio: user.bio || '',
+        background_blur: user.background_blur ?? 0
+      }))
+    }
+  }, [user, isEditing])
 
   useEffect(() => {
     const userToFetch = displayUser
@@ -253,8 +269,8 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
 
       const reader = new FileReader()
       reader.onload = () => {
-        setCropperImage(reader.result)
-        setCropperType('background')
+        setOriginalBackground(formData.background)
+        setBackgroundPreview(reader.result)
       }
       reader.readAsDataURL(processedFile)
     } catch (error) {
@@ -262,6 +278,66 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
       setMessage('处理图片失败')
     }
     e.target.value = ''
+  }
+
+  const handleBackgroundConfirm = async () => {
+    if (!backgroundPreview) {
+      console.log('backgroundPreview is null, cannot confirm')
+      return
+    }
+    
+    setLoading(true)
+    console.log('Starting background upload, backgroundPreview length:', backgroundPreview?.length)
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`
+        },
+        body: JSON.stringify({ image: backgroundPreview, filename: `background_${Date.now()}.jpg`, folder: 'backgrounds' })
+      })
+      const data = await response.json()
+      console.log('Upload response:', data)
+      if (data.success) {
+        const newBackgroundUrl = data.url
+        console.log('New background URL:', newBackgroundUrl)
+
+        setFormData(prev => ({ ...prev, background: newBackgroundUrl }))
+        setMessage('背景图上传成功')
+        console.log('formData.background updated')
+
+        if (!isEditing && user) {
+          const userUpdate = {
+            nickname: user.nickname || '',
+            avatar: user.avatar || '',
+            background: newBackgroundUrl,
+            bio: user.bio || '',
+            background_blur: user.background_blur ?? 0
+          }
+          const updateResult = await updateUser(user.id, userUpdate)
+          console.log('Update user result:', updateResult)
+          if (updateResult.success) {
+            await refreshUser()
+          } else {
+            setMessage('背景更新失败：' + (updateResult.message || '请稍后重试'))
+          }
+        }
+      } else {
+        setMessage('背景图上传失败')
+      }
+    } catch (error) {
+      console.error('上传失败:', error)
+      setMessage('背景图上传失败')
+    }
+    setLoading(false)
+    setBackgroundPreview(null)
+    setOriginalBackground(null)
+  }
+
+  const handleBackgroundCancel = () => {
+    setBackgroundPreview(null)
+    setOriginalBackground(null)
   }
 
   const handleCropConfirm = async (croppedImage) => {
@@ -310,7 +386,13 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
     setLoading(true)
     try {
       // 更新用户信息
-      const userData = { nickname: formData.nickname, avatar: formData.avatar, background: formData.background, bio: formData.bio }
+      const userData = {
+      nickname: formData.nickname,
+      avatar: formData.avatar,
+      background: formData.background,
+      bio: formData.bio,
+      background_blur: Number(formData.background_blur || 0)
+    }
       const result = await updateUser(user.id, userData)
       
       if (result.success) {
@@ -382,6 +464,20 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
 
   return (
     <div className="profile">
+      <input
+        type="file"
+        ref={avatarInputRef}
+        accept="image/jpeg,image/jpg,image/png,image/gif,image/heic,image/heif"
+        onChange={handleAvatarFileChange}
+        style={{ display: 'none' }}
+      />
+      <input
+        type="file"
+        ref={backgroundInputRef}
+        accept="image/jpeg,image/jpg,image/png,image/gif,image/heic,image/heif"
+        onChange={handleBackgroundFileChange}
+        style={{ display: 'none' }}
+      />
       {cropperImage && (
         <ImageCropper
           image={cropperImage}
@@ -397,65 +493,45 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
           <h2>编辑个人资料</h2>
           {message && <p className="profile-message">{message}</p>}
           <form onSubmit={handleSubmit} className="profile-form">
-            <div className="profile-form-group">
-              <label>头像</label>
-              <div className="profile-avatar-upload">
-                <img src={formData.avatar} alt={formData.nickname} className="profile-avatar" />
-                <input
-                  type="file"
-                  ref={avatarInputRef}
-                  accept="image/jpeg,image/jpg,image/png,image/gif,image/heic,image/heif"
-                  onChange={handleAvatarFileChange}
-                  style={{ display: 'none' }}
-                />
-                <div className="profile-avatar-buttons">
-                  <button type="button" onClick={handleAvatarChange} className="profile-avatar-btn" disabled={loading}>
-                    {loading ? '上传中...' : '上传头像'}
-                  </button>
-                  <button type="button" onClick={() => {
-                    const randomSeed = Math.random().toString(36).substring(2, 10)
-                    setFormData(prev => ({ ...prev, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}` }))
-                  }} className="profile-avatar-random-btn" disabled={loading}>
-                    更换头像
-                  </button>
+            <div className="profile-card profile-info-card">
+              <div className="profile-card-header">
+                <h3>个人信息</h3>
+              </div>
+              <div className="profile-card-body">
+                <div className="profile-form-group">
+                  <label>昵称</label>
+                  <input type="text" name="nickname" value={formData.nickname} onChange={handleInputChange} />
+                </div>
+                <div className="profile-form-group">
+                  <label>个性签名</label>
+                  <textarea name="bio" value={formData.bio} onChange={handleInputChange} rows={3} />
+                </div>
+                <div className="profile-form-group profile-background-blur-control">
+                  <label>背景模糊强度：{formData.background_blur || 0}px</label>
+                  <input
+                    type="range"
+                    name="background_blur"
+                    min="0"
+                    max="20"
+                    step="1"
+                    value={formData.background_blur || 0}
+                    onChange={handleInputChange}
+                  />
+                  <div className="profile-blur-value">当前：{formData.background_blur || 0}px</div>
                 </div>
               </div>
-            </div>
-            <div className="profile-form-group" style={{ display: 'none' }}>
-              <label>背景图</label>
-              <div className="profile-background-upload">
-                {formData.background && (
-                  <img src={formData.background} alt="背景图" className="profile-background-preview" />
-                )}
-                <input
-                  type="file"
-                  ref={backgroundInputRef}
-                  accept="image/jpeg,image/jpg,image/png,image/gif,image/heic,image/heif"
-                  onChange={handleBackgroundFileChange}
-                  style={{ display: 'none' }}
-                />
-                <button type="button" onClick={handleBackgroundChange} className="profile-background-btn" disabled={loading}>
-                  {loading ? '上传中...' : (formData.background ? '更换背景图' : '上传背景图')}
+              <div className="profile-card-actions">
+                <button type="submit" className="profile-save" disabled={loading}>
+                  {loading ? '保存中...' : '保存'}
+                </button>
+                <button type="button" onClick={() => setIsEditing(false)} className="profile-cancel" disabled={loading}>
+                  取消
                 </button>
               </div>
             </div>
-            <div className="profile-form-group">
-              <label>昵称</label>
-              <input type="text" name="nickname" value={formData.nickname} onChange={handleInputChange} />
-            </div>
-            <div className="profile-form-group">
-              <label>个性签名</label>
-              <textarea name="bio" value={formData.bio} onChange={handleInputChange} rows={3} />
-            </div>
-            <div className="profile-form-actions">
-              <button type="submit" className="profile-save" disabled={loading}>
-                {loading ? '保存中...' : '保存'}
-              </button>
-              <button type="button" onClick={() => setIsEditing(false)} className="profile-cancel" disabled={loading}>取消</button>
-            </div>
           </form>
 
-          <div className="profile-password-section">
+          <div className="profile-card profile-password-card">
             <h3>修改密码</h3>
             <form onSubmit={handlePasswordChange} className="profile-form">
               <div className="profile-form-group">
@@ -475,9 +551,37 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
       ) : (
         <>
           <div className="profile-header-container">
-            <div className="profile-background" style={displayUser.background && displayUser.background.startsWith('http') ? { backgroundImage: `url(${displayUser.background})` } : {}} />
+            <div
+              className="profile-background"
+              style={(backgroundPreview || (isEditing ? formData.background : displayUser.background)) ? {
+                backgroundImage: `url(${backgroundPreview || (isEditing ? formData.background : displayUser.background)})`,
+                filter: (isEditing ? formData.background_blur : displayUser.background_blur) ? `blur(${isEditing ? formData.background_blur : displayUser.background_blur}px)` : 'none'
+              } : {}}
+            />
+            {!isOtherUser && (
+              <button type="button" className="profile-background-change-btn" onClick={handleBackgroundChange} disabled={loading}>
+                更换背景
+              </button>
+            )}
+            {backgroundPreview && !isOtherUser && (
+              <div className="profile-background-preview-overlay">
+                <button type="button" onClick={handleBackgroundConfirm} className="profile-background-confirm" disabled={loading}>
+                  {loading ? '上传中...' : '确认'}
+                </button>
+                <button type="button" onClick={handleBackgroundCancel} className="profile-background-cancel" disabled={loading}>
+                  取消
+                </button>
+              </div>
+            )}
             <div className="profile-header">
-              <img src={displayUser.avatar} alt={displayUser.nickname} className="profile-avatar" />
+              <div className="profile-avatar-wrapper">
+                <img src={displayUser.avatar} alt={displayUser.nickname} className="profile-avatar" />
+                {!isOtherUser && (
+                  <button type="button" className="profile-avatar-edit-btn" onClick={handleAvatarChange} disabled={loading}>
+                    更换头像
+                  </button>
+                )}
+              </div>
               <h2 className="profile-nickname">{displayUser.nickname}</h2>
               <p className="profile-username">@{displayUser.username}</p>
               {displayUser.bio && <p className="profile-bio">{displayUser.bio}</p>}
@@ -497,7 +601,7 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
               {/* 喜欢的标签 */}
               {userTags.length > 0 && (
                 <div className="profile-tags">
-                  <span className="profile-tags-label">喜欢的标签</span>
+                {/*  <span className="profile-tags-label">喜欢的标签</span> */} 
                   <div className="profile-tags-list">
                     {userTags.map(tag => (
                       <span key={tag.id} className="profile-tag">{tag.name}</span>

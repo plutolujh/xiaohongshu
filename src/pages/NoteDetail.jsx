@@ -274,7 +274,7 @@ export default function NoteDetail() {
 
           <div className="note-detail-author">
             <img
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${note.author_id}`}
+              src={note.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${note.author_id}`}
               alt={note.author_name}
               className="note-detail-avatar clickable-avatar"
               onClick={() => navigate(`/profile/${note.author_id}`)}

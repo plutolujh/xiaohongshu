@@ -14,6 +14,7 @@ import Changelog from './pages/Changelog'
 import SystemStatus from './pages/SystemStatus'
 import UserManagement from './pages/UserManagement'
 import NoteManagement from './pages/NoteManagement'
+import MyUploads from './pages/MyUploads'
 import Feedback from './pages/Feedback'
 import FeedbackManagement from './pages/FeedbackManagement'
 import DatabaseManagement from './pages/DatabaseManagement'
@@ -155,6 +156,14 @@ export default function App() {
                 <AdminRoute>
                   <TagManagement />
                 </AdminRoute>
+              }
+            />
+            <Route
+              path="/my-uploads"
+              element={
+                <ProtectedRoute>
+                  <MyUploads />
+                </ProtectedRoute>
               }
             />
           </Routes>

@@ -103,8 +103,8 @@ export function AuthProvider({ children }) {
     if (user) {
       const updated = await findUserById(user.id)
       if (updated) {
-        setUser(updated)
-        setCurrentUser(updated)
+        setUser({ ...updated, token: user.token })
+        setCurrentUser({ ...updated, token: user.token })
       }
     }
   }

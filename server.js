@@ -138,7 +138,7 @@ function validateRequest(req, res, next) {
   if (!validMethods.includes(req.method)) {
     return res.json({ success: false, message: '无效的请求方法' })
   }
-  
+
   // 验证请求路径
   const validPaths = [
     '/upload',
@@ -152,7 +152,8 @@ function validateRequest(req, res, next) {
     '/tags', '/tags/popular', '/tags/:id', '/tags/:id/notes',
     '/admin/tags/:id',
     '/health', '/status',
-    '/db/info', '/db/tables', '/db/table/:tableName', '/db/table/:tableName/structure', '/db/query', '/db/backup'
+    '/db/info', '/db/tables', '/db/table/:tableName', '/db/table/:tableName/structure', '/db/query', '/db/backup',
+    '/test/supabase-ddl', '/user-uploads/create-table', '/test/create-table', '/test/insert-data', '/test/data'
   ]
   
   let pathValid = false
@@ -284,10 +285,11 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
     // 解码Base64图片
     const base64Data = image.split(';base64,').pop()
     const buffer = Buffer.from(base64Data, 'base64')
-    
+
     // 生成唯一文件名，并清理原始文件名中的非法字符
-    const ext = filename.substring(filename.lastIndexOf('.')) || '.jpg'
-    const sanitizedName = filename.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 50)
+    const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase() || '.jpg'
+    const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename
+    const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 50)
     const uniqueFilename = `${Date.now()}_${crypto.randomUUID()}_${sanitizedName}${ext}`
     // 头像放 avatars 文件夹，背景放 backgrounds 文件夹，其他放 files 文件夹
     let filePath
@@ -317,7 +319,18 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
     const { data: { publicUrl } } = supabase.storage
       .from('xiaohongbucket')
       .getPublicUrl(filePath)
-    
+
+    // 记录上传信息到数据库
+    try {
+      await query(
+        `INSERT INTO user_uploads (id, user_id, url, folder, filename, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [crypto.randomUUID(), req.user.userId, publicUrl, folder || 'files', filename, new Date().toISOString()]
+      )
+    } catch (err) {
+      console.error('记录上传失败:', err)
+    }
+
     res.json({ success: true, url: publicUrl })
   } catch (error) {
     console.error('上传错误:', error)
@@ -325,9 +338,118 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
   }
 })
 
+// 获取用户上传列表API
+app.get('/api/my/uploads', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.query.userId || req.user.userId
+
+    // 先尝试直接查询（如果表存在）
+    try {
+      const result = await query(
+        `SELECT url FROM user_uploads WHERE user_id = $1 ORDER BY created_at DESC`,
+        [userId]
+      )
+      return res.json({ success: true, images: result.rows.map(r => r.url) })
+    } catch (err) {
+      // 表不存在，返回空数组
+      console.log('user_uploads表不存在:', err.message)
+      return res.json({ success: true, images: [] })
+    }
+  } catch (error) {
+    console.error('获取上传列表失败:', error)
+    res.json({ success: false, message: '获取上传列表失败' })
+  }
+})
+
+// 删除用户上传API
+app.delete('/api/my/uploads', authenticateToken, async (req, res) => {
+  try {
+    const { imageUrl, userId } = req.body
+    const currentUserId = req.user.userId
+
+    // 验证用户权限
+    if (userId !== currentUserId) {
+      return res.json({ success: false, message: '无权限删除此上传' })
+    }
+
+    // 从URL中提取文件路径
+    const urlObj = new URL(imageUrl)
+    const filePath = urlObj.pathname.split('/xiaohongbucket/')[1]
+
+    // 从存储中删除文件
+    const { error: deleteError } = await supabase.storage
+      .from('xiaohongbucket')
+      .remove([filePath])
+
+    if (deleteError) {
+      console.error('删除存储文件失败:', deleteError)
+    }
+
+    // 从数据库删除记录
+    try {
+      await query(
+        `DELETE FROM user_uploads WHERE user_id = $1 AND url = $2`,
+        [userId, imageUrl]
+      )
+    } catch (err) {
+      console.log('删除数据库记录失败:', err.message)
+    }
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error('删除上传失败:', error)
+    res.json({ success: false, message: '删除上传失败' })
+  }
+})
+
 // 健康检查API
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Server is running' })
+})
+
+// 测试Supabase DDL权限
+app.get('/api/test/supabase-ddl', async (req, res) => {
+  try {
+    const { data, error } = await supabase.rpc('execute_sql', {
+      sql: `SELECT 1 as test`
+    })
+    if (error) {
+      res.json({ success: false, message: error.message, details: error })
+    } else {
+      res.json({ success: true, data })
+    }
+  } catch (err) {
+    res.json({ success: false, message: err.message })
+  }
+})
+
+// 创建用户上传记录表API
+app.post('/api/user-uploads/create-table', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .rpc('execute_sql', {
+        sql: `
+          CREATE TABLE IF NOT EXISTS user_uploads (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL,
+            url TEXT NOT NULL,
+            folder TEXT,
+            filename TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+          )
+        `
+      })
+
+    if (error) {
+      console.error('Error creating user_uploads table:', error)
+      return res.json({ success: false, message: error.message })
+    }
+
+    res.json({ success: true, message: 'user_uploads表创建成功' })
+  } catch (error) {
+    console.error('Error:', error)
+    res.json({ success: false, message: error.message })
+  }
 })
 
 // 测试创建表API
@@ -491,13 +613,45 @@ async function initDb() {
   try {
     // 测试Supabase连接
     await testSupabaseConnection()
-    
+
     // 创建索引和优化数据库
     await createIndexes()
-    
+    await ensureUserProfileColumns()
+    await ensureUserUploadsTable()
+
     console.log('Database initialized successfully')
   } catch (error) {
     console.error('Error initializing database:', error)
+  }
+}
+
+// 确保 user_uploads 表存在
+async function ensureUserUploadsTable() {
+  try {
+    await supabase.rpc('execute_sql', {
+      sql: `CREATE TABLE IF NOT EXISTS user_uploads (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL,
+        url TEXT NOT NULL,
+        folder TEXT,
+        filename TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )`
+    })
+    console.log('user_uploads table ensured')
+  } catch (error) {
+    console.error('Error ensuring user_uploads table:', error)
+  }
+}
+
+async function ensureUserProfileColumns() {
+  try {
+    await supabase.rpc('execute_sql', {
+      sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS background_blur INTEGER DEFAULT 0`
+    })
+    console.log('User profile columns ensured')
+  } catch (error) {
+    console.error('Error ensuring user profile columns:', error)
   }
 }
 
@@ -694,13 +848,14 @@ async function query(text, params) {
             const nickname = params[0]
             const avatar = params[1]
             const bio = params[2]
-            const userId = params[3]
-            console.log('Updating user:', { userId, nickname, avatar, bio })
+            const background = params[3]
+            const userId = params[4]
+            console.log('Updating user:', { userId, nickname, avatar, bio, background })
             const { error } = await supabase
               .from('users')
-              .update({ nickname, avatar, bio })
+              .update({ nickname, avatar, bio, background })
               .eq('id', userId)
-            
+
             if (error) {
               console.error('Error updating user:', error)
               throw error
@@ -722,7 +877,54 @@ async function query(text, params) {
         }
         return { rows: [] }
       }
-      
+
+      // 处理user_uploads表的操作
+      if (lowerText.includes('user_uploads')) {
+        if (lowerText.startsWith('insert')) {
+          const id = params[0]
+          const user_id = params[1]
+          const url = params[2]
+          const folder = params[3]
+          const filename = params[4]
+          const created_at = params[5]
+          console.log('Inserting user_upload:', { id, user_id, url, folder, filename, created_at })
+          const { error } = await supabase
+            .from('user_uploads')
+            .insert({ id, user_id, url, folder, filename, created_at })
+
+          if (error) {
+            console.error('Error inserting user_upload:', error)
+            throw error
+          }
+          return { rows: [] }
+        } else if (lowerText.startsWith('select')) {
+          const { data, error } = await supabase
+            .from('user_uploads')
+            .select('*')
+            .eq('user_id', params[0])
+            .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('Error selecting user_uploads:', error)
+            throw error
+          }
+          return { rows: data || [] }
+        } else if (lowerText.startsWith('delete')) {
+          const { error } = await supabase
+            .from('user_uploads')
+            .delete()
+            .eq('user_id', params[0])
+            .eq('url', params[1])
+
+          if (error) {
+            console.error('Error deleting user_upload:', error)
+            throw error
+          }
+          return { rows: [] }
+        }
+        return { rows: [] }
+      }
+
       // 处理tags表的操作
       if (lowerText.includes('tags')) {
         if (lowerText.startsWith('insert')) {
@@ -1418,7 +1620,7 @@ app.post('/api/users', async (req, res) => {
 })
 
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
-  const { nickname, avatar, bio } = req.body
+  const { nickname, avatar, bio, background, background_blur } = req.body
 
   // IDOR 防护：验证当前用户是否有权限修改该用户
   const currentUserId = req.user.userId
@@ -1437,11 +1639,17 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
   if (bio && bio.length > 200) {
     return res.json({ success: false, message: '个性签名长度不能超过200个字符' })
   }
+  if (background_blur !== undefined) {
+    const blurValue = Number(background_blur)
+    if (Number.isNaN(blurValue) || blurValue < 0 || blurValue > 20) {
+      return res.json({ success: false, message: '背景模糊值必须在0到20之间' })
+    }
+  }
 
   try {
     await query(
-      `UPDATE users SET nickname = $1, avatar = $2, bio = $3 WHERE id = $4`,
-      [nickname.trim(), avatar, bio ? bio.trim() : '', req.params.id]
+      `UPDATE users SET nickname = $1, avatar = $2, bio = $3, background = $4 WHERE id = $5`,
+      [nickname.trim(), avatar, bio ? bio.trim() : '', background || '', req.params.id]
     )
     res.json({ success: true })
   } catch (e) {
@@ -2240,6 +2448,19 @@ app.get('/api/notes/:id', async (req, res) => {
     
     console.log('Found note:', note)
     
+    // 获取作者头像
+    let authorAvatar = null
+    try {
+      const { data: authorData } = await supabase
+        .from('users')
+        .select('avatar')
+        .eq('id', note.author_id)
+        .single()
+      authorAvatar = authorData?.avatar || null
+    } catch (e) {
+      console.error('Error fetching author avatar:', e)
+    }
+    
     // 处理图片数据
     let images = note.images || []
     if (typeof images === 'string') {
@@ -2254,6 +2475,7 @@ app.get('/api/notes/:id', async (req, res) => {
     // 默认只返回第一张图片，详情页需要加载全部
     const full = req.query.full === 'true'
     note.images = full ? images : images.slice(0, 1)
+    note.author_avatar = authorAvatar
     
     res.json(note)
   } catch (e) {

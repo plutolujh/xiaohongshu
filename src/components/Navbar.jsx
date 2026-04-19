@@ -39,6 +39,7 @@ export default function Navbar() {
                 <span className="navbar-username">{user.nickname}</span>
               </Link>
               <Link to="/feedback" className="navbar-link">{t('navbar.feedback', language)}</Link>
+              <Link to="/my-uploads" className="navbar-link">{t('navbar.myUploads', language)}</Link>
               {isAdmin && (
                 <>
                   <Link to="/system-status" className="navbar-link">{t('navbar.systemStatus', language)}</Link>
