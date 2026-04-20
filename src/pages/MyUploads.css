@@ -111,3 +111,108 @@
   background: #ccc;
   cursor: not-allowed;
 }
+
+.my-uploads-actions {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.my-upload-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.my-upload-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+.my-upload-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.upload-progress {
+  flex: 1;
+  max-width: 300px;
+  height: 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.upload-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+  transition: width 0.2s;
+}
+
+.upload-progress-text {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: #666;
+}
+
+.my-upload-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.my-upload-download {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.my-upload-download:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.my-uploads-header {
+  margin-bottom: 16px;
+}
+
+.my-uploads-back-btn {
+  padding: 8px 16px;
+  background: #f5f5f5;
+  color: #333;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.my-uploads-back-btn:hover {
+  background: #e5e5e5;
+}
+
+.my-upload-item.selectable {
+  cursor: pointer;
+}
+
+.my-upload-item.selectable:hover {
+  box-shadow: 0 0 0 3px #ff2442;
+}

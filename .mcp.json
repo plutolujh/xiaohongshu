@@ -6,7 +6,7 @@
     },
     "chrome-devtools": {
       "command": "chrome-devtools-mcp",
-      "args": ["--headless"]
+      "args": ["--autoConnect"]
     }
   }
 }

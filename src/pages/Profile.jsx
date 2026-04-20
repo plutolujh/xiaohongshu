@@ -39,24 +39,24 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
   const [cropperType, setCropperType] = useState(null)
   const [backgroundPreview, setBackgroundPreview] = useState(null)
   const [originalBackground, setOriginalBackground] = useState(null)
+  const [showImageSelector, setShowImageSelector] = useState(false)
+  const [imageSelectorType, setImageSelectorType] = useState(null) // 'avatar' or 'background'
+  const [uploadedImages, setUploadedImages] = useState([])
+  const [loadingImages, setLoadingImages] = useState(false)
   const navigate = useNavigate()
 
   // 确定显示哪个用户的信息
   const displayUser = isOtherUser ? targetUser : user
 
+  const hasRefreshedRef = useRef(false)
+
   useEffect(() => {
-    if (isOtherUser && effectiveUserId) {
-      setLoadingUser(true)
-      // 获取其他用户信息 - 使用 /api/user/:id (根据ID查询)
-      fetch(`/api/user/${effectiveUserId}`, { headers: getHeaders() })
-        .then(res => res.json())
-        .then(data => {
-          if (data) setTargetUser(data)
-          setLoadingUser(false)
-        })
-        .catch(() => setLoadingUser(false))
+    if (!isOtherUser && user && !hasRefreshedRef.current) {
+      // 刷新当前用户的信息，确保头像和背景图是最新的
+      refreshUser()
+      hasRefreshedRef.current = true
     }
-  }, [isOtherUser, effectiveUserId])
+  }, [isOtherUser, user, refreshUser])
 
   useEffect(() => {
     const fetchFollowCounts = async () => {
@@ -141,6 +141,72 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
     navigate('/')
   }
 
+  const loadUploadedImages = async () => {
+    if (!user) return
+    setLoadingImages(true)
+    try {
+      const response = await fetch(`/api/my/uploads?userId=${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
+      const data = await response.json()
+      if (data.success) {
+        setUploadedImages(data.images || [])
+      }
+    } catch (error) {
+      console.error('加载图片失败:', error)
+    }
+    setLoadingImages(false)
+  }
+
+  const handleSelectFromUploads = async (type) => {
+    await loadUploadedImages()
+    setImageSelectorType(type)
+    setShowImageSelector(true)
+  }
+
+  const handleImageSelect = (imageUrl) => {
+    if (imageSelectorType === 'avatar') {
+      setFormData(prev => ({ ...prev, avatar: imageUrl }))
+      setMessage('头像已选择')
+    } else {
+      setFormData(prev => ({ ...prev, background: imageUrl }))
+      setMessage('背景图已选择')
+    }
+    setShowImageSelector(false)
+  }
+
+  const handleDeleteImage = async (imageUrl) => {
+    if (!confirm('确定要删除这张图片吗？')) return
+    try {
+      const response = await fetch('/api/my/uploads', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({ imageUrl, userId: user.id })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setUploadedImages(uploadedImages.filter(img => img !== imageUrl))
+      } else {
+        alert('删除失败')
+      }
+    } catch (error) {
+      console.error('删除失败:', error)
+      alert('删除失败')
+    }
+  }
+
+  const getImageCategory = (url) => {
+    if (url.includes('/avatars/')) return '头像'
+    if (url.includes('/backgrounds/')) return '背景图'
+    if (url.includes('/notes/')) return '笔记图片'
+    return '其他'
+  }
+
   const handleDeleteNote = async (noteId) => {
     if (!confirm('确定要删除这篇笔记吗？')) return
     await deleteNoteById(noteId)
@@ -182,10 +248,14 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
   }
 
   const handleAvatarChange = () => {
-    avatarInputRef.current?.click()
+    navigate('/my-uploads?mode=avatar')
   }
 
-  const handleAvatarFileChange = async (e) => {
+  const handleBackgroundChange = () => {
+    navigate('/my-uploads?mode=background')
+  }
+
+  const handleBackgroundFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -232,11 +302,7 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
     e.target.value = ''
   }
 
-  const handleBackgroundChange = () => {
-    backgroundInputRef.current?.click()
-  }
-
-  const handleBackgroundFileChange = async (e) => {
+  const handleAvatarFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -360,9 +426,41 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
         if (type === 'avatar') {
           setFormData(prev => ({ ...prev, avatar: data.url }))
           setMessage('头像上传成功')
+          // 如果不在编辑模式，立即更新用户资料
+          if (!isEditing && user) {
+            const userUpdate = {
+              nickname: user.nickname || '',
+              avatar: data.url,
+              background: user.background || '',
+              bio: user.bio || '',
+              background_blur: user.background_blur ?? 0
+            }
+            const updateResult = await updateUser(user.id, userUpdate)
+            if (updateResult.success) {
+              await refreshUser()
+            } else {
+              setMessage('头像更新失败：' + (updateResult.message || '请稍后重试'))
+            }
+          }
         } else {
           setFormData(prev => ({ ...prev, background: data.url }))
           setMessage('背景图上传成功')
+          // 如果不在编辑模式，立即更新用户资料
+          if (!isEditing && user) {
+            const userUpdate = {
+              nickname: user.nickname || '',
+              avatar: user.avatar || '',
+              background: data.url,
+              bio: user.bio || '',
+              background_blur: user.background_blur ?? 0
+            }
+            const updateResult = await updateUser(user.id, userUpdate)
+            if (updateResult.success) {
+              await refreshUser()
+            } else {
+              setMessage('背景更新失败：' + (updateResult.message || '请稍后重试'))
+            }
+          }
         }
       } else {
         setMessage(type === 'avatar' ? '头像上传失败' : '背景图上传失败')
@@ -487,6 +585,31 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
           onConfirm={handleCropConfirm}
           onCancel={handleCropCancel}
         />
+      )}
+      {showImageSelector && (
+        <div className="image-selector-modal">
+          <div className="image-selector-content">
+            <h3>从相册选择{imageSelectorType === 'avatar' ? '头像' : '背景图'}</h3>
+            <button className="image-selector-close" onClick={() => setShowImageSelector(false)}>×</button>
+            {loadingImages ? (
+              <div className="image-selector-loading">加载中...</div>
+            ) : uploadedImages.length === 0 ? (
+              <div className="image-selector-empty">暂无上传记录</div>
+            ) : (
+              <div className="image-selector-grid">
+                {uploadedImages.map((image, index) => (
+                  <div key={index} className="image-selector-item">
+                    <img src={image} alt={`图片 ${index + 1}`} onClick={() => handleImageSelect(image)} />
+                    <div className="image-selector-item-overlay">
+                      <span className="image-selector-category">{getImageCategory(image)}</span>
+                      <button className="image-selector-delete" onClick={(e) => { e.stopPropagation(); handleDeleteImage(image); }}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
       {isEditing ? (
         <div className="profile-edit">

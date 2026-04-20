@@ -151,6 +151,7 @@ function validateRequest(req, res, next) {
     '/feedback', '/feedback/:id',
     '/tags', '/tags/popular', '/tags/:id', '/tags/:id/notes',
     '/admin/tags/:id',
+    '/my/uploads',
     '/health', '/status',
     '/db/info', '/db/tables', '/db/table/:tableName', '/db/table/:tableName/structure', '/db/query', '/db/backup',
     '/test/supabase-ddl', '/user-uploads/create-table', '/test/create-table', '/test/insert-data', '/test/data'
@@ -897,18 +898,6 @@ async function query(text, params) {
             throw error
           }
           return { rows: [] }
-        } else if (lowerText.startsWith('select')) {
-          const { data, error } = await supabase
-            .from('user_uploads')
-            .select('*')
-            .eq('user_id', params[0])
-            .order('created_at', { ascending: false })
-
-          if (error) {
-            console.error('Error selecting user_uploads:', error)
-            throw error
-          }
-          return { rows: data || [] }
         } else if (lowerText.startsWith('delete')) {
           const { error } = await supabase
             .from('user_uploads')
@@ -1098,6 +1087,24 @@ async function query(text, params) {
       
       // 对于其他表的操作，暂时返回成功
       return { rows: [] }
+    }
+    
+    // 检查是否是查询user_uploads表的SQL
+    if (text.includes('SELECT') && text.includes('user_uploads')) {
+      const userId = params[0]
+      console.log('Querying user_uploads for user:', userId)
+      
+      const { data, error } = await supabase
+        .from('user_uploads')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error selecting user_uploads:', error)
+        throw error
+      }
+      return { rows: data || [] }
     }
     
     // 检查是否是系统查询或聚合查询
