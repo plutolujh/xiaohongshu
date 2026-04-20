@@ -65,6 +65,12 @@ a:hover{text-decoration:underline}
 <p><strong>原因:</strong> <code>handleSelect</code> 函数只发送了 avatar/background 字段，缺少 nickname 等必填字段</p>
 <p><strong>修复:</strong> PUT 请求中包含完整用户信息：<code>nickname</code>、<code>bio</code>、<code>avatar</code>、<code>background</code>、<code>background_blur</code></p>
 
+<h4>4. 海报下载功能修复</h4>
+<p><strong>问题:</strong> 点击"下载海报"按钮时提示"Unable to find element in cloned iframe"</p>
+<p><strong>原因:</strong> html2canvas 库在处理包含特定 CSS 样式（如 transform、base64 图片）的 DOM 元素时会抛出 iframe 克隆错误</p>
+<p><strong>修复:</strong> 使用原生 Canvas API 替代 html2canvas 库，直接在 Canvas 上绘制海报内容：渐变背景、水印文字、用户信息、文本段落和图片</p>
+<p><strong>影响:</strong> 海报下载功能恢复正常，同时提升了生成速度和稳定性</p>
+
 <h3>样式更新</h3>
 
 <h4>1. 我的上传页面样式优化</h4>
@@ -81,6 +87,7 @@ a:hover{text-decoration:underline}
 <li><code>src/pages/MyUploads.jsx</code> - 模式选择、下载功能、handleSelect 修复</li>
 <li><code>src/pages/MyUploads.css</code> - 返回按钮、选中高亮样式</li>
 <li><code>src/pages/Profile.jsx</code> - 更换头像/背景按钮改为导航到我的上传</li>
+<li><code>src/components/PosterGenerator.jsx</code> - 使用原生 Canvas API 替代 html2canvas</li>
 </ul>
 </div>
 

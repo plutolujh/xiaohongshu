@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { findNoteById, updateNote, getCommentsByNoteId, createComment, deleteCommentById, getNoteTags, likeNote, unlikeNote, getNoteLikeStatus } from '../utils/db'
 import { useAuth } from '../context/AuthContext'
 import Loading from '../components/Loading'
+import PosterGenerator from '../components/PosterGenerator'
 import './NoteDetail.css'
 
 export default function NoteDetail() {
@@ -18,6 +19,7 @@ export default function NoteDetail() {
   const [loading, setLoading] = useState(false)
   const [liked, setLiked] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [showPoster, setShowPoster] = useState(false)
   const shareContentRef = useRef(null)
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -261,6 +263,12 @@ export default function NoteDetail() {
               >
                 {sharing ? '生成中...' : '📤 分享'}
               </button>
+              <button
+                className="note-detail-poster"
+                onClick={() => setShowPoster(true)}
+              >
+                🎨 海报
+              </button>
               {user && user.id === note.author_id && (
                 <button
                   className="note-detail-edit"
@@ -440,6 +448,14 @@ export default function NoteDetail() {
             />
           </div>
         </div>
+      )}
+
+      {/* 海报生成模态框 */}
+      {showPoster && (
+        <PosterGenerator
+          note={note}
+          onClose={() => setShowPoster(false)}
+        />
       )}
 
     </div>

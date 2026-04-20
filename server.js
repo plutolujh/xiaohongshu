@@ -50,7 +50,7 @@ const commentRepo = new CommentRepository(supabase)
 const feedbackRepo = new FeedbackRepository(supabase)
 
 const app = express()
-const PORT = process.env.PORT || 3004
+const PORT = process.env.PORT || 3005
 
 // 标签缓存
 const tagCache = {
