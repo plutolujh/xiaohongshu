@@ -222,11 +222,7 @@
 }
 
 .note-detail-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .note-detail-header h1 {
@@ -234,7 +230,17 @@
   font-weight: 700;
   color: #333;
   margin: 0;
-  flex: 1;
+  line-height: 1.4;
+}
+
+.note-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 0;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .note-detail-like {
@@ -311,12 +317,17 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-  margin-left: 8px;
 }
 
 .note-detail-share:hover {
   background: #f0f0f0;
   transform: scale(1.05);
+}
+
+.note-detail-share:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .note-detail-poster {
@@ -331,7 +342,6 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-  margin-left: 8px;
   color: white;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
@@ -354,7 +364,6 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-  margin-left: 8px;
 }
 
 .note-detail-edit:hover {
@@ -704,20 +713,6 @@
 }
 
 /* 分享按钮 */
-.note-detail-share {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 20px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  margin-left: 8px;
-}
 
 .note-detail-share:hover {
   background: #e8f4f8;

@@ -249,35 +249,6 @@ export default function NoteDetail() {
         <div className="note-detail-content">
           <div className="note-detail-header">
             <h1>{note.title}</h1>
-            <div className="note-detail-actions">
-              <button
-                className={`note-detail-like ${liked ? 'liked' : ''}`}
-                onClick={handleLike}
-              >
-                {liked ? '❤️' : '🤍'} {note.likes || 0}
-              </button>
-              <button
-                className="note-detail-share"
-                onClick={handleShare}
-                disabled={sharing}
-              >
-                {sharing ? '生成中...' : '📤 分享'}
-              </button>
-              <button
-                className="note-detail-poster"
-                onClick={() => setShowPoster(true)}
-              >
-                🎨 海报
-              </button>
-              {user && user.id === note.author_id && (
-                <button
-                  className="note-detail-edit"
-                  onClick={() => navigate(`/edit/${note.id}`)}
-                >
-                  编辑
-                </button>
-              )}
-            </div>
           </div>
 
           <div className="note-detail-author">
@@ -297,6 +268,36 @@ export default function NoteDetail() {
               </span>
               <span className="note-detail-date">{formatDate(note.created_at)}</span>
             </div>
+          </div>
+
+          <div className="note-detail-actions">
+            <button
+              className={`note-detail-like ${liked ? 'liked' : ''}`}
+              onClick={handleLike}
+            >
+              {liked ? '❤️' : '🤍'} {note.likes || 0}
+            </button>
+            <button
+              className="note-detail-share"
+              onClick={handleShare}
+              disabled={sharing}
+            >
+              {sharing ? '生成中...' : '📤 分享'}
+            </button>
+            <button
+              className="note-detail-poster"
+              onClick={() => setShowPoster(true)}
+            >
+              🎨 海报
+            </button>
+            {user && user.id === note.author_id && (
+              <button
+                className="note-detail-edit"
+                onClick={() => navigate(`/edit/${note.id}`)}
+              >
+                编辑
+              </button>
+            )}
           </div>
 
           {tags.length > 0 && (

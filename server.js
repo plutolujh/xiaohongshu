@@ -50,7 +50,7 @@ const commentRepo = new CommentRepository(supabase)
 const feedbackRepo = new FeedbackRepository(supabase)
 
 const app = express()
-const PORT = process.env.PORT || 3005
+const PORT = process.env.PORT || 3004
 
 // 标签缓存
 const tagCache = {
@@ -287,11 +287,18 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
     const base64Data = image.split(';base64,').pop()
     const buffer = Buffer.from(base64Data, 'base64')
 
-    // 生成唯一文件名，并清理原始文件名中的非法字符
-    const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase() || '.jpg'
-    const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename
-    const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 50)
-    const uniqueFilename = `${Date.now()}_${crypto.randomUUID()}_${sanitizedName}${ext}`
+    // 生成唯一文件名
+    // 清理扩展名，如果原始文件名有重复扩展名（如.jpeg.jpeg），只取最后一个
+    let ext = filename.substring(filename.lastIndexOf('.')).toLowerCase()
+    if (!ext || ext.length > 5) {
+      ext = '.jpg'
+    }
+    // 如果扩展名重复（如.jpeg.jpeg），只保留一个
+    const baseName = filename.substring(0, filename.lastIndexOf('.'))
+    const secondExt = baseName.substring(baseName.lastIndexOf('.')).toLowerCase()
+    const cleanName = secondExt === ext ? baseName.substring(0, baseName.lastIndexOf('.')) : baseName
+    const sanitizedName = cleanName.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 30)
+    const uniqueFilename = `${Date.now()}_${crypto.randomUUID()}_${sanitizedName || 'image'}${ext}`
     // 头像放 avatars 文件夹，背景放 backgrounds 文件夹，其他放 files 文件夹
     let filePath
     if (folder === 'avatars') {
