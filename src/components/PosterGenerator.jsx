@@ -203,7 +203,9 @@ export default function PosterGenerator({ note, onClose }) {
       const width = 400
       const padding = 16
       const contentWidth = width - padding * 2
-      let currentY = 0
+      const topPadding = 64
+      const bottomPadding = 48
+      let currentY = topPadding
 
       // 先计算需要的高度
       const headerHeight = 90  // 标题 + 作者区域
@@ -239,7 +241,7 @@ export default function PosterGenerator({ note, onClose }) {
       }
 
       // 总高度
-      const totalHeight = Math.max(600, headerHeight + textHeight + imageHeight + footerHeight + 40)
+      const totalHeight = Math.max(600, topPadding + headerHeight + textHeight + imageHeight + footerHeight + bottomPadding)
 
       const canvas = document.createElement('canvas')
       canvas.width = width * 2 // 2x for retina
@@ -285,11 +287,10 @@ export default function PosterGenerator({ note, onClose }) {
 
       // 标题
       setProgress(20)
-      currentY = 20
       ctx.font = `bold 24px ${fontFamilyRef.current}`
       ctx.fillStyle = '#333'
-      wrapTextCentered(ctx, note.title || '笔记分享', width / 2, currentY, contentWidth, 30)
-      currentY += 55
+      currentY = wrapTextCentered(ctx, note.title || '笔记分享', width / 2, currentY, contentWidth, 28)
+      currentY += 8
 
       // 标题下划线
       ctx.strokeStyle = '#ff6b6b'
@@ -298,7 +299,7 @@ export default function PosterGenerator({ note, onClose }) {
       ctx.moveTo(50, currentY)
       ctx.lineTo(width - 50, currentY)
       ctx.stroke()
-      currentY += 20
+      currentY += 16
 
       // 作者信息
       setProgress(30)
@@ -332,45 +333,45 @@ export default function PosterGenerator({ note, onClose }) {
 
       for (let i = 0; i < sections.length; i++) {
         const section = sections[i]
-        if (!section.content) continue
+        if (section.content) {
+          // 章节标题
+          ctx.font = `bold 18px ${fontFamilyRef.current}`
+          ctx.fillStyle = '#333'
+          ctx.textAlign = 'left'
+          ctx.fillText(section.title, contentX, currentY)
+          currentY += 24
 
-        // 章节标题
-        ctx.font = `bold 18px ${fontFamilyRef.current}`
-        ctx.fillStyle = '#333'
-        ctx.textAlign = 'left'
-        ctx.fillText(section.title, contentX, currentY)
-        currentY += 24
-
-        // 章节内容
-        ctx.font = `14px ${fontFamilyRef.current}`
-        ctx.fillStyle = '#555'
-        const lines = section.content.split('\n')
-        for (const line of lines) {
-          const trimmedLine = line.trim()
-          if (trimmedLine) {
-            const lines2 = []
-            let currentLine = ''
-            for (const char of trimmedLine) {
-              const testLine = currentLine + char
-              if (ctx.measureText(testLine).width > contentWidth && currentLine) {
-                lines2.push(currentLine)
-                currentLine = char
-              } else {
-                currentLine = testLine
+          // 章节内容
+          ctx.font = `14px ${fontFamilyRef.current}`
+          ctx.fillStyle = '#555'
+          const lines = section.content.split('\n')
+          for (const line of lines) {
+            const trimmedLine = line.trim()
+            if (trimmedLine) {
+              const lines2 = []
+              let currentLine = ''
+              for (const char of trimmedLine) {
+                const testLine = currentLine + char
+                if (ctx.measureText(testLine).width > contentWidth && currentLine) {
+                  lines2.push(currentLine)
+                  currentLine = char
+                } else {
+                  currentLine = testLine
+                }
               }
+              if (currentLine) lines2.push(currentLine)
+              for (const l of lines2) {
+                ctx.fillText(l, contentX, currentY)
+                currentY += lineHeight
+              }
+            } else {
+              currentY += 8
             }
-            if (currentLine) lines2.push(currentLine)
-            for (const l of lines2) {
-              ctx.fillText(l, contentX, currentY)
-              currentY += lineHeight
-            }
-          } else {
-            currentY += 8
           }
+          currentY += 12
         }
-        currentY += 12
 
-        // 插入图片
+        // 插入图片（无论section是否有内容，只要图片存在就显示）
         if (i < loadedImages.length && loadedImages[i].img) {
           setProgress(40 + (i * 15))
           const imgHeight = loadedImages[i].height
@@ -386,7 +387,7 @@ export default function PosterGenerator({ note, onClose }) {
         }
       }
 
-      // 额外的图片
+      // 额外的图片（从section数量之后开始）
       for (let i = sections.length; i < loadedImages.length; i++) {
         setProgress(40 + (i * 15))
         const imgHeight = loadedImages[i].height
@@ -403,22 +404,23 @@ export default function PosterGenerator({ note, onClose }) {
 
       // 底部
       setProgress(90)
+      const footerY = totalHeight - footerHeight - bottomPadding
       ctx.fillStyle = '#f8f8f8'
-      ctx.fillRect(0, totalHeight - footerHeight, width, footerHeight)
+      ctx.fillRect(0, footerY, width, footerHeight)
 
       ctx.font = `12px ${fontFamilyRef.current}`
       ctx.fillStyle = '#999'
       ctx.textAlign = 'left'
-      ctx.fillText('小红书美食分享', padding, totalHeight - 30)
+      ctx.fillText('小红书美食分享', padding, footerY + 30)
 
       // 二维码
       const qrUrlCanvas = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrUrlRef.current)}`
       try {
         const qrImg = await loadImage(qrUrlCanvas)
-        ctx.drawImage(qrImg, width - padding - 60, totalHeight - 50, 60, 60)
+        ctx.drawImage(qrImg, width - padding - 60, footerY + 10, 60, 60)
       } catch (e) {
         ctx.fillStyle = '#eee'
-        ctx.fillRect(width - padding - 60, totalHeight - 50, 60, 60)
+        ctx.fillRect(width - padding - 60, footerY + 10, 60, 60)
       }
 
       // 下载

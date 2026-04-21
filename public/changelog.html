@@ -29,6 +29,81 @@ a:hover{text-decoration:underline}
 <h1>📝 项目修改日志</h1>
 
 <div class="section">
+<h2 class="version">[2.5.0] - 2026-04-21</h2>
+
+<h3>功能优化</h3>
+
+<h4>1. 海报二维码显示修复</h4>
+<p><strong>问题:</strong> 下载的海报中二维码比例变形，不是正方形</p>
+<p><strong>修复:</strong></p>
+<ul>
+<li>修正 QR code canvas 绘制尺寸为 60x60（之前是 60x40）</li>
+<li>添加 <code>!img.src.includes('api.qrserver.com')</code> 条件，避免 QR server URL 被错误处理</li>
+</ul>
+
+<h4>2. 海报二维码网址可配置</h4>
+<p><strong>功能:</strong> 管理员可在系统状态页面配置海报二维码扫描后的跳转网址</p>
+<p><strong>实现:</strong></p>
+<ul>
+<li>新增 <code>qrUrl</code> 状态，默认值从 localStorage 读取</li>
+<li>在系统状态页面添加 QR URL 设置面板</li>
+<li>保存后存入 localStorage 持久化</li>
+</ul>
+
+<h4>3. 笔记页面操作按钮布局优化</h4>
+<p><strong>问题:</strong> 点赞、分享、海报按钮与标题混在一起，不够清晰</p>
+<p><strong>修复:</strong></p>
+<ul>
+<li>将操作按钮移至作者信息下方，独立成一行</li>
+<li>使用 flexbox 居中布局，按钮间距统一 12px</li>
+<li>统一按钮样式，hover 效果一致</li>
+</ul>
+
+<h3>Bug 修复</h3>
+
+<h4>1. 图片文件后缀名重复问题</h4>
+<p><strong>问题:</strong> 上传的图片文件出现 .jpeg.jpeg、.png.png 等重复后缀</p>
+<p><strong>原因:</strong> server.js 文件名生成逻辑未处理已带扩展名的情况</p>
+<p><strong>修复:</strong> 优化文件名生成逻辑，检测并处理双重扩展名</p>
+<p><strong>脚本:</strong> 创建 <code>fix-double-extensions.js</code> 修复已存在的 5 个文件</p>
+
+<h4>2. 笔记中 Base64 图片数据问题</h4>
+<p><strong>问题:</strong> 部分笔记的 images 字段存储的是 Base64 数据而非图片 URL</p>
+<p><strong>修复:</strong> 创建 <code>fix-base64-images.js</code> 脚本，将 Base64 数据上传至 Supabase Storage 并更新数据库</p>
+<p><strong>影响:</strong> 修复 1 条笔记中的 Base64 图片</p>
+
+<h4>3. 海报水印默认文字错误</h4>
+<p><strong>问题:</strong> 海报水印默认显示"测试水印ABC"而非用户名</p>
+<p><strong>修复:</strong> 用户登录后，水印自动设置为用户昵称（仅当 localStorage 中无保存值或值为默认文字时）</p>
+
+<h4>4. 海报图片显示问题</h4>
+<p><strong>问题:</strong> 当笔记的食材、做法等 section 为空时，对应的图片不会显示</p>
+<p><strong>修复:</strong> 修改图片渲染逻辑，无论 section 是否有内容，只要图片存在就显示</p>
+
+<h4>5. 海报标题间距调整</h4>
+<p><strong>问题:</strong> 海报顶部空白不足，标题与下划线间距过大</p>
+<p><strong>修复:</strong></p>
+<ul>
+<li>顶部空白从 24px 调整为 64px</li>
+<li>标题 lineHeight 从 30 调整为 28</li>
+<li>标题后间距从 16px 调整为 8px</li>
+<li>预览添加红色下划线与 CSS 样式匹配</li>
+</ul>
+
+<h3>修改文件</h3>
+<ul>
+<li><code>server.js</code> - 文件名生成逻辑修复</li>
+<li><code>src/components/PosterGenerator.jsx</code> - QR 尺寸修复、可配置 QR URL、水印默认值、图片显示、标题间距修复</li>
+<li><code>src/components/PosterGenerator.css</code> - 新增标题红色下划线样式、顶部内边距调整</li>
+<li><code>src/pages/SystemStatus.jsx</code> - 添加 QR URL 设置面板</li>
+<li><code>src/pages/NoteDetail.jsx</code> - 操作按钮位置调整</li>
+<li><code>src/pages/NoteDetail.css</code> - 操作按钮样式优化</li>
+<li><code>fix-double-extensions.js</code> - 新增，修复重复后缀文件</li>
+<li><code>fix-base64-images.js</code> - 新增，修复 Base64 图片</li>
+</ul>
+</div>
+
+<div class="section">
 <h2 class="version">[2.4.0] - 2026-04-20</h2>
 
 <h3>新增功能</h3>
