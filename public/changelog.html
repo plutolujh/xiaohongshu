@@ -33,7 +33,25 @@ a:hover{text-decoration:underline}
 
 <h3>Bug 修复</h3>
 
-<h4>1. 个人资料页密码修改失败</h4>
+<h4>1. 个人资料页查看他人资料无法加载</h4>
+<p><strong>问题:</strong> 访问他人资料页（如 <code>/profile/:id</code>）时一直显示加载状态或"用户不存在"</p>
+<p><strong>原因:</strong></p>
+<ul>
+<li><code>isOtherUser=true</code> 时，组件从未调用 API 获取目标用户数据</li>
+<li>API 响应格式是直接返回用户对象 <code>{id, username, ...}</code>，但前端检查 <code>result.success && result.user</code></li>
+</ul>
+<p><strong>修复:</strong></p>
+<ul>
+<li>新增 <code>useEffect</code> 监听 <code>effectiveUserId</code>，当查看他人资料时调用 <code>findUserById</code> 获取用户数据</li>
+<li>修复检查逻辑：直接检查 <code>result && result.id</code></li>
+</ul>
+
+<h4>2. 个人资料页笔记获取性能问题</h4>
+<p><strong>问题:</strong> 获取用户笔记时未传递 <code>authorId</code>，导致获取所有笔记再客户端过滤</p>
+<p><strong>原因:</strong> <code>getAllNotes(page, 10)</code> 没有传递 <code>authorId</code>，生产环境可能有数千条笔记</p>
+<p><strong>修复:</strong> 改为 <code>getAllNotes(page, 10, userToFetch.id)</code> 让服务端按 <code>author_id</code> 过滤</p>
+
+<h4>3. 个人资料页密码修改失败</h4>
 <p><strong>问题:</strong> 在个人资料页修改密码时提示"更新失败"</p>
 <p><strong>原因:</strong></p>
 <ul>
@@ -46,7 +64,7 @@ a:hover{text-decoration:underline}
 <li>在 <code>query</code> 函数中添加 password 特殊处理分支</li>
 </ul>
 
-<h4>2. 笔记评论头像未关联用户真实头像</h4>
+<h4>4. 笔记评论头像未关联用户真实头像</h4>
 <p><strong>问题:</strong> 评论中显示的头像是默认生成的，而非用户上传的真实头像</p>
 <p><strong>原因:</strong> 创建评论时只保存了 <code>user_id</code> 和 <code>user_name</code>，未保存 <code>user_avatar</code></p>
 <p><strong>修复:</strong></p>
@@ -71,6 +89,7 @@ a:hover{text-decoration:underline}
 <h3>修改文件</h3>
 <ul>
 <li><code>server.js</code> - 路由顺序调整、密码特殊处理、评论 user_avatar</li>
+<li><code>src/pages/Profile.jsx</code> - 修复他人资料加载、笔记服务端过滤</li>
 <li><code>src/pages/NoteDetail.jsx</code> - 评论数据添加 user_avatar</li>
 <li><code>repositories/CommentRepository.js</code> - createComment 添加 user_avatar</li>
 <li><code>src/pages/Publish.jsx</code> - 新增风景打卡模板</li>
@@ -78,7 +97,7 @@ a:hover{text-decoration:underline}
 </div>
 
 <div class="section">
-<h2 class="version">[2.5.0] - 2026-04-21</h2>
+<h2 class="version">[2.4.0] - 2026-04-21</h2>
 
 <h3>功能优化</h3>
 

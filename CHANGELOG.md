@@ -4,7 +4,24 @@
 
 ### Bug 修复
 
-#### 1. 个人资料页密码修改失败
+#### 1. 个人资料页查看他人资料无法加载
+- **问题**: 访问他人资料页（如 `/profile/:id`）时一直显示加载状态或"用户不存在"
+- **原因**:
+  - `isOtherUser=true` 时，组件从未调用 API 获取目标用户数据
+  - `targetUser` 永远是 `null`，`loadingUser` 永远是 `true`
+  - API 响应格式是直接返回用户对象 `{id, username, ...}`，但前端检查 `result.success && result.user`
+- **修复**:
+  - 新增 `useEffect` 监听 `effectiveUserId`，当查看他人资料时调用 `findUserById` 获取用户数据
+  - 修复检查逻辑：直接检查 `result && result.id`
+- **修改文件**: `src/pages/Profile.jsx`
+
+#### 2. 个人资料页笔记获取性能问题
+- **问题**: 获取用户笔记时未传递 `authorId`，导致获取所有笔记再客户端过滤
+- **原因**: `getAllNotes(page, 10)` 没有传递 `authorId`，生产环境可能有数千条笔记
+- **修复**: 改为 `getAllNotes(page, 10, userToFetch.id)` 让服务端按 `author_id` 过滤
+- **修改文件**: `src/pages/Profile.jsx`
+
+#### 3. 个人资料页密码修改失败
 - **问题**: 在个人资料页修改密码时提示"更新失败"
 - **原因**:
   - `/api/users/:id/password` 路由被 `/api/users/:id` 通配路由匹配

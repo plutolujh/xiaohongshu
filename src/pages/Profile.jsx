@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getAllNotes, deleteNoteById, updateUser, getHeaders, getFollowCounts, getUserTags } from '../utils/db'
+import { getAllNotes, deleteNoteById, updateUser, getHeaders, getFollowCounts, getUserTags, findUserById } from '../utils/db'
 import Loading from '../components/Loading'
 import FollowButton from '../components/FollowButton'
 import ImageCropper from '../components/ImageCropper'
@@ -49,6 +49,27 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
   const displayUser = isOtherUser ? targetUser : user
 
   const hasRefreshedRef = useRef(false)
+
+  // 获取其他用户资料
+  useEffect(() => {
+    if (isOtherUser && effectiveUserId) {
+      const fetchTargetUser = async () => {
+        setLoadingUser(true)
+        try {
+          const result = await findUserById(effectiveUserId)
+          // API 直接返回用户对象，没有 success/user 包装
+          if (result && result.id) {
+            setTargetUser(result)
+          }
+        } catch (error) {
+          console.error('获取用户资料失败:', error)
+        } finally {
+          setLoadingUser(false)
+        }
+      }
+      fetchTargetUser()
+    }
+  }, [isOtherUser, effectiveUserId])
 
   useEffect(() => {
     if (!isOtherUser && user && !hasRefreshedRef.current) {
@@ -98,22 +119,22 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
   useEffect(() => {
     const userToFetch = displayUser
     if (userToFetch) {
-      // 获取用户的笔记（获取所有页数据）
+      // 获取用户的笔记（使用服务端过滤，避免客户端全表扫描）
       const fetchAllNotes = async () => {
         let allNotes = []
         let page = 1
         let hasMore = true
 
         while (hasMore) {
-          const result = await getAllNotes(page, 10)
+          // 传递 authorId 让服务端过滤
+          const result = await getAllNotes(page, 10, userToFetch.id)
           const pageNotes = result.notes || []
           allNotes = [...allNotes, ...pageNotes]
           hasMore = pageNotes.length === 10
           page++
         }
 
-        // 过滤当前用户的笔记
-        setNotes(allNotes.filter(n => n.author_id === userToFetch.id || n.author_id === userToFetch.username))
+        setNotes(allNotes)
         setLoadingNotes(false)
       }
 

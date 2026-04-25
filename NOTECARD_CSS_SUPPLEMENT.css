@@ -1,0 +1,113 @@
+/**
+ * NoteCard.css 补充
+ * 
+ * 添加快速海报按钮的样式
+ * 
+ * 将以下CSS添加到 src/components/NoteCard.css 中
+ */
+
+/* 快速海报按钮 - 浮在卡片右上角 */
+.note-card {
+  position: relative;
+}
+
+.btn-quick-poster {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  
+  /* 外观 */
+  background: linear-gradient(135deg, rgba(248, 80, 80, 0.95), rgba(248, 80, 80, 0.8));
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  
+  /* 文本和内容 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  
+  /* 交互 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(248, 80, 80, 0.2);
+  
+  /* 悬停效果 */
+  &:hover {
+    transform: scale(1.15) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(248, 80, 80, 0.4);
+    background: linear-gradient(135deg, rgba(248, 80, 80, 1), rgba(248, 80, 80, 0.9));
+  }
+  
+  /* 活跃状态 */
+  &:active {
+    transform: scale(1.08);
+  }
+}
+
+.poster-icon {
+  display: inline-block;
+  font-size: 20px;
+}
+
+.poster-tooltip {
+  display: none;
+}
+
+/* 悬停时显示提示文本（大屏幕） */
+@media (min-width: 768px) {
+  .btn-quick-poster:hover .poster-tooltip {
+    display: inline-block;
+  }
+  
+  .btn-quick-poster:hover {
+    width: auto;
+    padding: 8px 12px;
+    border-radius: 20px;
+    gap: 6px;
+  }
+  
+  .poster-tooltip {
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    margin-left: 4px;
+  }
+}
+
+/* 移动设备 - 简化样式 */
+@media (max-width: 480px) {
+  .btn-quick-poster {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    top: 6px;
+    right: 6px;
+  }
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .btn-quick-poster {
+    background: linear-gradient(135deg, rgba(248, 80, 80, 0.9), rgba(248, 80, 80, 0.8));
+    box-shadow: 0 2px 8px rgba(248, 80, 80, 0.3);
+  }
+  
+  .btn-quick-poster:hover {
+    box-shadow: 0 4px 12px rgba(248, 80, 80, 0.5);
+  }
+}
+
+/* 动画优化 */
+@media (prefers-reduced-motion: reduce) {
+  .btn-quick-poster {
+    transition: none;
+  }
+  
+  .btn-quick-poster:hover {
+    transform: none;
+  }
+}
