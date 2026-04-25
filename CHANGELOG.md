@@ -1,5 +1,43 @@
 # 项目修改日志
 
+## [2.4.2] - 2026-04-25
+
+### Bug 修复
+
+#### 1. 粉丝/关注列表tab显示数量错误
+- **问题**: 粉丝页面切换粉丝/关注tab时，两个tab显示相同的数量
+- **原因**: `FollowersPage.jsx` 中两个tab共享同一个 `total` 状态，切换时没有分别记录各自的数量
+- **修复**: 使用 `followersTotal` 和 `followingTotal` 两个独立状态，分别记录粉丝总数和关注总数
+- **修改文件**: `src/pages/FollowersPage.jsx`
+
+#### 2. follow-counts API返回total为0
+- **问题**: `/api/users/:id/follow-counts` 返回的 `total` 字段为0，但实际有数据
+- **原因**: generic query function 中的 COUNT 查询处理逻辑有问题，notes表SELECT处理会错误匹配COUNT查询
+- **修复**: 
+  - 直接使用 Supabase 的 count API 获取粉丝/关注数量，不再依赖可能有问题的 generic query function
+  - 重写 `/api/users/:id/followers`、`/api/users/:id/following`、`/api/users/:id/follow-counts` 三个API
+- **修改文件**: `server.js`
+
+#### 3. 粉丝列表SQL JOIN查询返回"User not found"
+- **问题**: 粉丝/关注列表页面显示"User not found"错误
+- **原因**: generic query function 中检查 `WHERE username =` 的条件过于宽泛，JOIN查询中的 `u.username` 被错误匹配
+- **修复**: 在检查ID查询时排除JOIN查询，并在路由处理中直接使用Supabase替代有问题的generic query
+- **修改文件**: `server.js`
+
+### 数据库优化
+
+#### 1. follows 表添加唯一约束
+- **问题**: follows 表允许重复的关注记录，导致粉丝/关注计数不准确
+- **修复**: 
+  - 清理 follows 表中 `(follower_id, following_id)` 的重复记录
+  - 添加唯一约束 `follows_unique (follower_id, following_id)`
+- **影响**: 防止重复关注，确保粉丝/关注计数准确
+
+#### 2. note_tags 表添加唯一约束
+- **问题**: note_tags 表缺少唯一约束，理论上可能存在重复的笔记-标签关联
+- **修复**: 添加唯一约束 `note_tags_unique (note_id, tag_id)`
+- **影响**: 防止重复的笔记-标签关联，确保标签计数准确
+
 ## [2.4.1] - 2026-04-25
 
 ### Bug 修复
@@ -31,7 +69,19 @@
   - 在 `query` 函数中添加 password 特殊处理分支
 - **修改文件**: `server.js`
 
-#### 2. 笔记评论头像未关联用户真实头像
+#### 4. 粉丝关注数据获取问题
+- **问题**: `follow-counts` API 返回的 `notes` 字段为 `null`
+- **原因**: `query` 函数中 notes 表的 SELECT 特殊处理逻辑也会错误地处理 `COUNT(*)` 查询，导致返回整行数据而非计数
+- **修复**: 在 notes 表的特殊 SELECT 处理逻辑中添加 `!isCountQuery` 条件，排除 COUNT 查询
+- **修改文件**: `server.js`
+
+#### 5. 粉丝/关注列表返回"User not found"
+- **问题**: 访问粉丝或关注列表时显示"User not found"错误
+- **原因**: `query` 函数中检查用户名查询的条件过于宽泛，将 JOIN 查询中的 `username` 字段错误匹配为用户名查询条件
+- **修复**: 精确匹配 `WHERE username =` 模式，而非仅检查是否包含 `username` 字符串
+- **修改文件**: `server.js`
+
+#### 6. 笔记评论头像未关联用户真实头像
 - **问题**: 评论中显示的头像是默认生成的，而非用户上传的真实头像
 - **原因**: 创建评论时只保存了 `user_id` 和 `user_name`，未保存 `user_avatar`
 - **修复**:

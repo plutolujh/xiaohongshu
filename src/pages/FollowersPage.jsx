@@ -12,7 +12,8 @@ export default function FollowersPage() {
   const [userInfo, setUserInfo] = useState(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  const [total, setTotal] = useState(0)
+  const [followersTotal, setFollowersTotal] = useState(0)
+  const [followingTotal, setFollowingTotal] = useState(0)
 
   useEffect(() => {
     loadUserInfo()
@@ -46,7 +47,11 @@ export default function FollowersPage() {
         } else {
           setUsers(prev => [...prev, ...result.data.users])
         }
-        setTotal(result.data.total)
+        if (type === 'followers') {
+          setFollowersTotal(result.data.total)
+        } else {
+          setFollowingTotal(result.data.total)
+        }
         setHasMore(result.data.users.length === 20)
       }
     } catch (err) {
@@ -80,13 +85,13 @@ export default function FollowersPage() {
           to={`/users/${userId}/followers`}
           className={`tab ${isFollowers ? 'active' : ''}`}
         >
-          粉丝 {total}
+          粉丝 {followersTotal}
         </Link>
         <Link
           to={`/users/${userId}/following`}
           className={`tab ${!isFollowers ? 'active' : ''}`}
         >
-          关注 {total}
+          关注 {followingTotal}
         </Link>
       </div>
 

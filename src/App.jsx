@@ -74,15 +74,7 @@ export default function App() {
               }
             />
             <Route
-              path="/users/:userId/followers"
-              element={
-                <ProtectedRoute>
-                  <FollowersPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/users/:userId/following"
+              path="/users/:userId/:type"
               element={
                 <ProtectedRoute>
                   <FollowersPage />

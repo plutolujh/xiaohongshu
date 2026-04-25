@@ -1230,7 +1230,8 @@ async function query(text, params) {
     // 检查是否是查询notes表的SQL
     const isSelectQuery = lowerText.includes('select')
     const isNotesTable = lowerText.includes('notes')
-    if (isSelectQuery && isNotesTable) {
+    const isCountQuery = lowerText.includes('count(*)')
+    if (isSelectQuery && isNotesTable && !isCountQuery) {
       // 检查是否是根据ID查询
       const idMatch = text.match(/WHERE\s+id\s*=\s*\$1/i)
       console.log('ID match:', idMatch)
@@ -1450,8 +1451,8 @@ async function query(text, params) {
     
     // 检查是否是查询users表的SQL
     if (text.includes('SELECT') && text.includes('users')) {
-      // 检查是否是根据用户名查询
-      if (text.includes('WHERE') && text.includes('username') && text.includes('$1')) {
+      // 检查是否是根据用户名查询（确保是 WHERE username = 或 WHERE username LIKE 等，而非 SELECT 中的 username 字段）
+      if (text.match(/\bWHERE\b.*\busername\b\s*[=<>]/i) && text.includes('$1')) {
         // 提取用户名参数
         const username = params[0]
         console.log('Querying user by username:', username)
@@ -1491,10 +1492,10 @@ async function query(text, params) {
           // 直接返回错误，让登录接口处理
           throw error
         }
-      } else if (text.includes('WHERE') && text.includes('id') && text.includes('$1')) {
-        // 检查是否是根据ID查询
+      } else if (text.includes('WHERE') && text.includes('id') && text.includes('$1') && !text.match(/\bJOIN\b/i)) {
+        // 检查是否是根据ID查询（排除JOIN查询）
         const userId = params[0]
-        
+
         // 检查是否是查询用户角色
         if (text.includes('SELECT role FROM users')) {
           console.log('Querying user role for id:', userId)
@@ -1503,17 +1504,17 @@ async function query(text, params) {
               .from('users')
               .select('role')
               .eq('id', userId)
-            
+
             if (error) {
               console.error('Error querying user role:', error)
               throw error
             }
-            
+
             if (!users || users.length === 0) {
               console.log('No user found for id:', userId)
               return { rows: [] }
             }
-            
+
             console.log('User role found:', users[0])
             return { rows: users }
           } catch (error) {
@@ -1521,12 +1522,12 @@ async function query(text, params) {
             throw error
           }
         }
-        
+
         const { data: users, error } = await supabase
           .from('users')
           .select('*')
           .eq('id', userId)
-        
+
         if (error) {
           console.error('Error querying users by id:', error)
           throw error
@@ -1611,12 +1612,115 @@ async function query(text, params) {
       if (tableMatch) {
         const tableName = tableMatch[1]
         console.log('Deleting from table:', tableName)
-        
+
         // 对于删除操作，我们已经在前面的代码中处理了
         return { rows: [] }
       }
     }
-    
+
+    // 检查是否是 COUNT 查询
+    if (lowerText.includes('count(*)')) {
+      const tableMatch = text.match(/FROM\s+(\w+)/i)
+      if (tableMatch) {
+        const tableName = tableMatch[1]
+        console.log('Executing COUNT query on table:', tableName)
+
+        // 解析 WHERE 条件
+        const conditions = []
+        if (text.includes('WHERE')) {
+          const whereMatch = text.match(/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/i)
+          if (whereMatch) {
+            const whereClause = whereMatch[1].trim()
+            const andConditions = whereClause.split(/\s+AND\s+/i)
+            andConditions.forEach(condition => {
+              const match = condition.match(/(\w+)\s*=\s*\$(\d+)/i)
+              if (match) {
+                const column = match[1]
+                const paramIndex = parseInt(match[2]) - 1
+                if (paramIndex < params.length) {
+                  conditions.push({ column, value: params[paramIndex] })
+                }
+              }
+            })
+          }
+        }
+
+        try {
+          let countQuery = supabase.from(tableName).select('*', { count: 'exact', head: true })
+          conditions.forEach(({ column, value }) => {
+            countQuery = countQuery.eq(column, value)
+          })
+
+          const { count, error } = await countQuery
+          if (error) {
+            console.error('Error executing COUNT query:', error)
+            throw error
+          }
+          return { rows: [{ count: count || 0 }] }
+        } catch (error) {
+          console.error('Error in COUNT query:', error)
+          throw error
+        }
+      }
+    }
+
+    // 检查是否是SELECT查询
+    if (lowerText.startsWith('select')) {
+      // 提取表名
+      const tableMatch = text.match(/FROM\s+(\w+)/i)
+      if (tableMatch) {
+        const tableName = tableMatch[1]
+        console.log('Executing generic SELECT on table:', tableName)
+
+        // 使用 Supabase 执行查询
+        let supabaseQuery = supabase.from(tableName).select('*')
+
+        // 添加 WHERE 条件（如果有）
+        const whereMatch = text.match(/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/i)
+        if (whereMatch && params.length > 0) {
+          const whereClause = whereMatch[1].trim()
+          // 简单的 WHERE 条件处理 - 只支持 AND 连接和 = 操作
+          const conditions = whereClause.split(/\s+AND\s+/i)
+          conditions.forEach((condition, index) => {
+            const match = condition.match(/(\w+)\s*=\s*\$(\d+)/i)
+            if (match) {
+              const column = match[1]
+              const paramIndex = parseInt(match[2]) - 1
+              if (paramIndex < params.length) {
+                supabaseQuery = supabaseQuery.eq(column, params[paramIndex])
+              }
+            }
+          })
+        }
+
+        // 添加 ORDER BY（如果有）
+        const orderMatch = text.match(/ORDER BY\s+(\w+)(?:\s+(ASC|DESC))?/i)
+        if (orderMatch) {
+          const orderColumn = orderMatch[1]
+          const orderDirection = orderMatch[2]?.toLowerCase() === 'desc' ? false : true
+          supabaseQuery = supabaseQuery.order(orderColumn, { ascending: orderDirection })
+        }
+
+        // 添加 LIMIT（如果有）
+        const limitMatch = text.match(/LIMIT\s+(\d+)/i)
+        if (limitMatch) {
+          supabaseQuery = supabaseQuery.limit(parseInt(limitMatch[1]))
+        }
+
+        try {
+          const { data, error } = await supabaseQuery
+          if (error) {
+            console.error('Error executing SELECT query:', error)
+            throw error
+          }
+          return { rows: data || [] }
+        } catch (error) {
+          console.error('Error in SELECT query:', error)
+          throw error
+        }
+      }
+    }
+
     // 对于其他查询，返回空数组
     return { rows: [] }
   } catch (error) {
@@ -1976,46 +2080,53 @@ app.get('/api/users/:id/followers', authenticateToken, async (req, res) => {
   try {
     const offset = (page - 1) * limit
 
-    // 获取粉丝数量
-    const countResult = await query(
-      'SELECT COUNT(*) FROM follows WHERE following_id = $1',
-      [userId]
-    )
+    // 直接使用Supabase获取粉丝数量
+    const { count: total, error: countError } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', userId)
 
-    // 获取粉丝列表
-    const result = await query(`
-      SELECT u.id, u.username, u.nickname, u.avatar, u.bio, u.created_at,
-             f.created_at as followed_at
-      FROM follows f
-      JOIN users u ON f.follower_id = u.id
-      WHERE f.following_id = $1
-      ORDER BY f.created_at DESC
-      LIMIT $2 OFFSET $3
-    `, [userId, limit, offset])
+    // 获取粉丝列表 - 使用SQL JOIN风格的查询
+    const { data: followRows, error: followError } = await supabase
+      .from('follows')
+      .select('follower_id, created_at')
+      .eq('following_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (followError) throw followError
+
+    // 获取用户信息
+    const followerIds = followRows.map(r => r.follower_id)
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, username, nickname, avatar, bio, created_at')
+      .in('id', followerIds)
+
+    if (usersError) throw usersError
 
     // 如果有当前用户，检查关注状态
-    let users = result.rows
-    if (currentUserId) {
-      const userIds = users.map(u => u.id)
-      if (userIds.length > 0) {
-        const followResult = await query(
-          `SELECT following_id FROM follows
-           WHERE follower_id = $1 AND following_id = ANY($2)`,
-          [currentUserId, userIds]
-        )
-        const followingIds = new Set(followResult.rows.map(r => r.following_id))
-        users = users.map(u => ({
-          ...u,
-          isFollowing: followingIds.has(u.id)
-        }))
-      }
+    let resultUsers = users || []
+    if (currentUserId && resultUsers.length > 0) {
+      const userIds = resultUsers.map(u => u.id)
+      const { data: followStatusRows } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUserId)
+        .in('following_id', userIds)
+
+      const followingIds = new Set((followStatusRows || []).map(r => r.following_id))
+      resultUsers = resultUsers.map(u => ({
+        ...u,
+        isFollowing: followingIds.has(u.id)
+      }))
     }
 
     res.json({
       success: true,
       data: {
-        users,
-        total: parseInt(countResult.rows[0].count),
+        users: resultUsers,
+        total: total || 0,
         page: parseInt(page),
         limit: parseInt(limit)
       }
@@ -2034,46 +2145,53 @@ app.get('/api/users/:id/following', authenticateToken, async (req, res) => {
   try {
     const offset = (page - 1) * limit
 
-    // 获取关注数量
-    const countResult = await query(
-      'SELECT COUNT(*) FROM follows WHERE follower_id = $1',
-      [userId]
-    )
+    // 直接使用Supabase获取关注数量
+    const { count: total, error: countError } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', userId)
 
-    // 获取关注列表
-    const result = await query(`
-      SELECT u.id, u.username, u.nickname, u.avatar, u.bio, u.created_at,
-             f.created_at as followed_at
-      FROM follows f
-      JOIN users u ON f.following_id = u.id
-      WHERE f.follower_id = $1
-      ORDER BY f.created_at DESC
-      LIMIT $2 OFFSET $3
-    `, [userId, limit, offset])
+    // 获取关注列表 - 使用SQL JOIN风格的查询
+    const { data: followRows, error: followError } = await supabase
+      .from('follows')
+      .select('following_id, created_at')
+      .eq('follower_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (followError) throw followError
+
+    // 获取用户信息
+    const followingIds = followRows.map(r => r.following_id)
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, username, nickname, avatar, bio, created_at')
+      .in('id', followingIds)
+
+    if (usersError) throw usersError
 
     // 如果有当前用户，检查关注状态
-    let users = result.rows
-    if (currentUserId) {
-      const userIds = users.map(u => u.id)
-      if (userIds.length > 0) {
-        const followResult = await query(
-          `SELECT following_id FROM follows
-           WHERE follower_id = $1 AND following_id = ANY($2)`,
-          [currentUserId, userIds]
-        )
-        const followingIds = new Set(followResult.rows.map(r => r.following_id))
-        users = users.map(u => ({
-          ...u,
-          isFollowing: followingIds.has(u.id)
-        }))
-      }
+    let resultUsers = users || []
+    if (currentUserId && resultUsers.length > 0) {
+      const userIds = resultUsers.map(u => u.id)
+      const { data: followStatusRows } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUserId)
+        .in('following_id', userIds)
+
+      const followingIdsSet = new Set((followStatusRows || []).map(r => r.following_id))
+      resultUsers = resultUsers.map(u => ({
+        ...u,
+        isFollowing: followingIdsSet.has(u.id)
+      }))
     }
 
     res.json({
       success: true,
       data: {
-        users,
-        total: parseInt(countResult.rows[0].count),
+        users: resultUsers,
+        total: total || 0,
         page: parseInt(page),
         limit: parseInt(limit)
       }
@@ -2109,25 +2227,28 @@ app.get('/api/users/:id/follow-counts', async (req, res) => {
   const { id: userId } = req.params
 
   try {
-    const followingResult = await query(
-      'SELECT COUNT(*) FROM follows WHERE follower_id = $1',
-      [userId]
-    )
-    const followersResult = await query(
-      'SELECT COUNT(*) FROM follows WHERE following_id = $1',
-      [userId]
-    )
-    const notesResult = await query(
-      'SELECT COUNT(*) FROM notes WHERE author_id = $1',
-      [userId]
-    )
+    // 直接使用Supabase查询，避免generic query function的解析问题
+    const { count: followingCount, error: followingError } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', userId)
+
+    const { count: followersCount, error: followersError } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', userId)
+
+    const { count: notesCount, error: notesError } = await supabase
+      .from('notes')
+      .select('*', { count: 'exact', head: true })
+      .eq('author_id', userId)
 
     res.json({
       success: true,
       data: {
-        following: parseInt(followingResult.rows[0].count),
-        followers: parseInt(followersResult.rows[0].count),
-        notes: parseInt(notesResult.rows[0].count)
+        following: followingCount || 0,
+        followers: followersCount || 0,
+        notes: notesCount || 0
       }
     })
   } catch (e) {
