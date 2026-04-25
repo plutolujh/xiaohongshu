@@ -124,16 +124,18 @@
 
 @media (max-width: 768px) {
   .tag-input {
-    padding: 10px 14px;
+    padding: 12px 16px;
   }
-  
+
   .selected-tag {
-    padding: 5px 10px;
-    font-size: 13px;
+    padding: 8px 14px;
+    font-size: 14px;
+    min-height: 36px;
   }
-  
+
   .tag-item {
-    padding: 5px 10px;
-    font-size: 13px;
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 40px;
   }
 }

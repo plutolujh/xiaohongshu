@@ -1,26 +1,56 @@
 .follow-btn {
-  padding: 6px 14px;
+  padding: 10px 20px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   border: none;
+  min-height: 44px;
+  min-width: 70px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .follow-btn.normal {
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 10px 20px;
+  font-size: 14px;
 }
 
 .follow-btn.small {
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
+  min-height: 36px;
+  min-width: 60px;
 }
 
 .follow-btn.large {
-  padding: 8px 18px;
-  font-size: 14px;
+  padding: 12px 24px;
+  font-size: 15px;
+  min-height: 48px;
+}
+
+/* Mobile touch optimization */
+@media (max-width: 768px) {
+  .follow-btn {
+    padding: 12px 24px;
+    font-size: 15px;
+    min-height: 48px;
+    min-width: 80px;
+  }
+
+  .follow-btn.small {
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 40px;
+    min-width: 70px;
+  }
+
+  .follow-btn.large {
+    padding: 14px 28px;
+    font-size: 16px;
+    min-height: 52px;
+  }
 }
 
 .follow-btn:not(.following) {

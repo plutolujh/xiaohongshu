@@ -1,44 +1,45 @@
 .my-uploads-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg-secondary);
   padding: 40px 20px;
 }
 
 .my-uploads-container {
   max-width: 1000px;
   margin: 0 auto;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
 }
 
 .my-uploads-title {
   font-size: 24px;
   font-weight: 700;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 8px;
 }
 
 .my-uploads-subtitle {
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
   margin: 0 0 24px;
 }
 
 .my-uploads-empty {
   text-align: center;
   padding: 60px 20px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .my-uploads-stats {
   margin-bottom: 20px;
   padding: 12px 16px;
-  background: #f8f8f8;
+  background: var(--bg-tertiary);
   border-radius: 8px;
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .my-uploads-grid {
@@ -52,7 +53,7 @@
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
-  background: #f0f0f0;
+  background: var(--bg-tertiary);
 }
 
 .my-upload-image {
@@ -101,6 +102,11 @@
   font-size: 12px;
   cursor: pointer;
   transition: background 0.2s;
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .my-upload-delete:hover {
@@ -108,7 +114,7 @@
 }
 
 .my-upload-delete:disabled {
-  background: #ccc;
+  background: var(--text-muted);
   cursor: not-allowed;
 }
 
@@ -121,7 +127,7 @@
 
 .my-upload-btn {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+  background: var(--accent-color);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -133,11 +139,11 @@
 
 .my-upload-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+  box-shadow: 0 4px 12px rgba(248, 80, 80, 0.4);
 }
 
 .my-upload-btn:disabled {
-  background: #ccc;
+  background: var(--text-muted);
   cursor: not-allowed;
 }
 
@@ -145,7 +151,7 @@
   flex: 1;
   max-width: 300px;
   height: 8px;
-  background: #f0f0f0;
+  background: var(--bg-tertiary);
   border-radius: 4px;
   overflow: hidden;
   position: relative;
@@ -153,7 +159,7 @@
 
 .upload-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+  background: var(--accent-color);
   transition: width 0.2s;
 }
 
@@ -163,7 +169,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 11px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .my-upload-actions {
@@ -184,6 +190,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .my-upload-download:hover {
@@ -196,17 +204,18 @@
 
 .my-uploads-back-btn {
   padding: 8px 16px;
-  background: #f5f5f5;
-  color: #333;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   border: none;
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
   transition: background 0.2s;
+  min-height: 44px;
 }
 
 .my-uploads-back-btn:hover {
-  background: #e5e5e5;
+  background: var(--border-color);
 }
 
 .my-upload-item.selectable {
@@ -214,5 +223,63 @@
 }
 
 .my-upload-item.selectable:hover {
-  box-shadow: 0 0 0 3px #ff2442;
+  box-shadow: 0 0 0 3px var(--accent-color);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .my-uploads-page {
+    padding: 30px 16px;
+  }
+
+  .my-uploads-container {
+    padding: 20px;
+  }
+
+  .my-uploads-title {
+    font-size: 20px;
+  }
+
+  .my-uploads-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .my-upload-btn {
+    padding: 12px 20px;
+    min-height: 44px;
+  }
+
+  .my-uploads-actions {
+    flex-wrap: wrap;
+  }
+
+  .upload-progress {
+    width: 100%;
+    max-width: unset;
+  }
+}
+
+@media (max-width: 480px) {
+  .my-uploads-container {
+    padding: 16px;
+  }
+
+  .my-uploads-title {
+    font-size: 18px;
+  }
+
+  .my-uploads-subtitle {
+    font-size: 13px;
+  }
+
+  .my-uploads-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .my-upload-delete {
+    padding: 8px;
+    font-size: 14px;
+  }
 }

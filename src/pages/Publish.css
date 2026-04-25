@@ -3,30 +3,31 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  background: #f8f8f8;
+  background: var(--bg-secondary);
   padding: 80px 20px 40px;
 }
 
 .publish-card {
   width: 100%;
   max-width: 600px;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16px;
   padding: 40px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
 }
 
 .publish-card h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 8px;
   text-align: center;
 }
 
 .publish-subtitle {
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
   margin: 0 0 24px;
   text-align: center;
 }
@@ -38,7 +39,7 @@
 .templates-title {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 16px;
 }
 
@@ -53,21 +54,22 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  border: 2px solid #f0f0f0;
+  border: 2px solid var(--border-color);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  background: var(--card-bg);
 }
 
 .template-card:hover {
-  border-color: #ff2442;
-  background: #fffbfb;
+  border-color: var(--accent-color);
+  background: var(--bg-tertiary);
 }
 
 .template-card.selected {
-  border-color: #ff2442;
-  background: #fff5f5;
+  border-color: var(--accent-color);
+  background: var(--bg-tertiary);
 }
 
 .template-icon {
@@ -83,13 +85,13 @@
 .template-name {
   font-size: 15px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .template-desc {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .template-check {
@@ -98,7 +100,7 @@
   right: 8px;
   width: 20px;
   height: 20px;
-  background: #ff2442;
+  background: var(--accent-color);
   color: #fff;
   border-radius: 50%;
   display: flex;
@@ -123,12 +125,12 @@
 .publish-field label {
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .publish-field .label-hint {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   font-weight: 400;
   margin-left: 8px;
 }
@@ -136,7 +138,7 @@
 .publish-field input[type="text"],
 .publish-field textarea {
   padding: 12px 16px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
@@ -144,31 +146,33 @@
   resize: vertical;
   font-family: inherit;
   line-height: 1.5;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 .publish-field input[type="text"]:focus,
 .publish-field textarea:focus {
-  border-color: #ff2442;
+  border-color: var(--accent-color);
 }
 
 .publish-field input::placeholder,
 .publish-field textarea::placeholder {
-  color: #bbb;
+  color: var(--text-muted);
 }
 
 .publish-error {
   padding: 12px 16px;
-  background: #fff0f0;
-  border: 1px solid #ffcccc;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-color);
   border-radius: 8px;
-  color: #ff2442;
+  color: var(--accent-color);
   font-size: 14px;
 }
 
 .publish-success {
   padding: 12px 16px;
   background: #f0fff0;
-  border: 1px solid #ccffcc;
+  border: 1px solid #28a745;
   border-radius: 8px;
   color: #28a745;
   font-size: 14px;
@@ -199,25 +203,26 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 2px dashed #e5e5e5;
+  border: 2px dashed var(--input-border);
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s;
+  background: var(--input-bg);
 }
 
 .publish-image-add:hover {
-  border-color: #ff2442;
+  border-color: var(--accent-color);
 }
 
 .publish-image-add span {
   font-size: 24px;
-  color: #ccc;
+  color: var(--text-muted);
 }
 
 .publish-image-add p {
   margin: 4px 0 0;
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .publish-image-remove {
@@ -235,11 +240,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .publish-button {
   height: 48px;
-  background: #ff2442;
+  background: var(--accent-color);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -255,7 +262,7 @@
 }
 
 .publish-button:disabled {
-  background: #ccc;
+  background: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -287,26 +294,28 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--input-border);
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 14px;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 .tag-checkbox:hover {
-  border-color: #ff2442;
-  background: #fffbfb;
+  border-color: var(--accent-color);
+  background: var(--bg-tertiary);
 }
 
 .tag-checkbox input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: #ff2442;
+  accent-color: var(--accent-color);
 }
 
 .tag-checkbox input[type="checkbox"]:checked + span {
-  color: #ff2442;
+  color: var(--accent-color);
   font-weight: 500;
 }
 
@@ -315,7 +324,81 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8f8f8;
+  background: var(--bg-secondary);
   border-radius: 8px;
   margin-top: 8px;
+  color: var(--text-muted);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .publish-page {
+    padding: 70px 16px 30px;
+  }
+
+  .publish-card {
+    padding: 24px 20px;
+  }
+
+  .publish-card h2 {
+    font-size: 20px;
+  }
+
+  .templates-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .template-card {
+    padding: 16px;
+  }
+
+  .publish-button {
+    height: 48px;
+    min-height: 48px;
+    font-size: 15px;
+  }
+
+  .publish-images-grid {
+    gap: 6px;
+  }
+
+  .publish-image-remove {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .tag-checkbox {
+    padding: 10px 14px;
+    min-height: 44px;
+  }
+
+  .publish-field input[type="text"],
+  .publish-field textarea {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .publish-card {
+    padding: 20px 16px;
+  }
+
+  .publish-card h2 {
+    font-size: 18px;
+  }
+
+  .publish-subtitle {
+    font-size: 13px;
+  }
+
+  .template-icon {
+    font-size: 28px;
+  }
+
+  .template-name {
+    font-size: 14px;
+  }
 }

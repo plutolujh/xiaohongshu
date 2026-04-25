@@ -1,26 +1,29 @@
 import { useState, useEffect } from 'react'
-import { followUser, unfollowUser, getFollowStatus, getCurrentUser } from '../utils/db'
+import { followUser, unfollowUser, getFollowStatus } from '../utils/db'
+import { useAuth } from '../context/AuthContext'
 import './FollowButton.css'
 
 export default function FollowButton({ userId, size = 'normal', showText = true }) {
+  const { user: authUser } = useAuth()
   const [isFollowing, setIsFollowing] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
-  const currentUser = getCurrentUser()
-
-  // 未登录或自己不能关注
-  if (!currentUser || currentUser.id === userId) {
-    return null
-  }
-
+  // Check follow status when userId or authUser changes
   useEffect(() => {
+    // Check if user is logged in and not trying to follow themselves
+    if (!authUser || authUser.id === userId) {
+      return
+    }
+
+    // Check follow status
     checkFollowStatus()
-  }, [userId])
+  }, [userId, authUser])
 
   const checkFollowStatus = async () => {
+    if (!authUser) return
     try {
-      const data = await getFollowStatus(currentUser.id, userId)
+      const data = await getFollowStatus(authUser.id, userId)
       if (data.success) {
         setIsFollowing(data.data.isFollowing)
       }
@@ -31,7 +34,7 @@ export default function FollowButton({ userId, size = 'normal', showText = true 
 
   const handleFollow = async () => {
     setLoading(true)
-    setError('')
+    setError(null)
     try {
       const data = await followUser(userId)
       if (data.success) {
@@ -48,7 +51,7 @@ export default function FollowButton({ userId, size = 'normal', showText = true 
 
   const handleUnfollow = async () => {
     setLoading(true)
-    setError('')
+    setError(null)
     try {
       const data = await unfollowUser(userId)
       if (data.success) {
@@ -69,6 +72,11 @@ export default function FollowButton({ userId, size = 'normal', showText = true 
     } else {
       handleFollow()
     }
+  }
+
+  // Don't render if not logged in or trying to follow yourself
+  if (!authUser || authUser.id === userId) {
+    return null
   }
 
   if (error) {

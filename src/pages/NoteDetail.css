@@ -1,6 +1,6 @@
 .note-detail {
   min-height: 100vh;
-  background: #f8f8f8;
+  background: var(--bg-secondary);
   padding: 80px 20px 40px;
 }
 
@@ -12,13 +12,13 @@
 .note-detail-back {
   display: inline-block;
   margin-bottom: 20px;
-  color: #666;
+  color: var(--text-secondary);
   text-decoration: none;
   font-size: 16px;
 }
 
 .note-detail-back:hover {
-  color: #ff4757;
+  color: var(--accent-color);
 }
 
 .clickable-image {
@@ -87,55 +87,72 @@
   color: white;
   border: none;
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  font-size: 20px;
+  width: 50px;
+  height: 50px;
+  font-size: 24px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.2s;
+  touch-action: manipulation;
 }
 
 .image-modal-nav:hover {
   background: rgba(0, 0, 0, 0.7);
+  transform: translateY(-50%) scale(1.1);
 }
 
 .image-modal-prev {
-  left: -60px;
+  left: 10px;
 }
 
 .image-modal-next {
-  right: -60px;
+  right: 10px;
 }
 
 /* 移动端响应式调整 */
 @media (max-width: 768px) {
-  .image-modal-prev {
-    left: 10px;
-  }
-  
+  .image-modal-prev,
   .image-modal-next {
-    right: 10px;
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
-  
+
+  .image-modal-prev {
+    left: 8px;
+  }
+
+  .image-modal-next {
+    right: 8px;
+  }
+
   .image-modal-content {
-    max-width: 95%;
-    max-height: 95%;
+    max-width: 98%;
+    max-height: 98%;
   }
-  
+
   .image-modal-img {
-    max-height: 70vh;
+    max-height: 65vh;
+    border-radius: 4px;
   }
-  
+
   .image-modal-close,
   .image-modal-rotate {
-    top: -30px;
+    top: -36px;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
   }
-  
+
   .image-modal-counter {
-    bottom: -30px;
+    bottom: -36px;
+    font-size: 13px;
+    padding: 4px 10px;
   }
 }
 
@@ -184,7 +201,7 @@
   aspect-ratio: 4/3;
   border-radius: 16px;
   overflow: hidden;
-  background: #fff;
+  background: var(--card-bg);
 }
 
 .note-detail-image img {
@@ -213,12 +230,12 @@
 }
 
 .note-detail-content {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16px;
   padding: 24px;
   margin-top: -40px;
   position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--card-shadow);
 }
 
 .note-detail-header {
@@ -228,7 +245,7 @@
 .note-detail-header h1 {
   font-size: 24px;
   font-weight: 700;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.4;
 }
@@ -248,7 +265,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   border: none;
   border-radius: 20px;
   font-size: 14px;
@@ -257,16 +274,17 @@
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  color: var(--text-primary);
 }
 
 .note-detail-like:hover {
-  background: #f0f0f0;
+  background: var(--bg-secondary);
   transform: scale(1.05);
 }
 
 .note-detail-like.liked {
-  background: #fff0f0;
-  color: #ff2442;
+  background: var(--bg-tertiary);
+  color: var(--accent-color);
   animation: like-pulse 0.6s ease-in-out;
 }
 
@@ -310,17 +328,18 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   border: none;
   border-radius: 20px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  color: var(--text-primary);
 }
 
 .note-detail-share:hover {
-  background: #f0f0f0;
+  background: var(--bg-secondary);
   transform: scale(1.05);
 }
 
@@ -357,18 +376,19 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   border: none;
   border-radius: 20px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  color: var(--text-primary);
 }
 
 .note-detail-edit:hover {
-  background: #f0f0f0;
-  color: #ff2442;
+  background: var(--bg-secondary);
+  color: var(--accent-color);
 }
 
 .note-detail-author {
@@ -376,8 +396,8 @@
   align-items: center;
   gap: 12px;
   padding: 16px 0;
-  border-top: 1px solid #f0f0f0;
-  border-bottom: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 20px;
 }
 
@@ -385,7 +405,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
 }
 
 .note-detail-author-info {
@@ -397,24 +417,24 @@
 .note-detail-author-name {
   font-size: 15px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .note-detail-date {
   font-size: 13px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .note-detail-tags {
   margin-bottom: 20px;
   padding: 16px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .note-detail-tags h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 12px;
 }
 
@@ -427,16 +447,16 @@
 .note-tag {
   display: inline-block;
   padding: 6px 12px;
-  background: #f5f5f5;
-  color: #666;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
   border-radius: 16px;
   font-size: 13px;
   transition: all 0.2s;
 }
 
 .note-tag:hover {
-  background: #e8f4f8;
-  color: #1890ff;
+  background: var(--bg-secondary);
+  color: var(--accent-color);
   cursor: pointer;
 }
 
@@ -447,25 +467,25 @@
 .note-detail-section h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 12px;
 }
 
 .note-detail-section p {
   font-size: 15px;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0;
   line-height: 1.7;
 }
 
 .note-detail-section pre {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0;
   line-height: 1.8;
   white-space: pre-wrap;
   font-family: inherit;
-  background: #fafafa;
+  background: var(--bg-secondary);
   padding: 16px;
   border-radius: 8px;
 }
@@ -480,13 +500,13 @@
 .note-detail-comments {
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-color);
 }
 
 .note-detail-comments h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 20px;
 }
 
@@ -501,7 +521,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   flex-shrink: 0;
 }
 
@@ -517,45 +537,47 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   border-radius: 8px;
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .comment-cancel-reply {
   background: none;
   border: none;
   font-size: 18px;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   line-height: 1;
   padding: 0;
 }
 
 .comment-cancel-reply:hover {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .comment-input {
   flex: 1;
   height: 36px;
   padding: 0 16px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--input-border);
   border-radius: 18px;
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 .comment-input:focus {
-  border-color: #ff2442;
+  border-color: var(--accent-color);
 }
 
 .comment-submit {
   padding: 8px 20px;
-  background: #ff2442;
-  color: #fff;
+  background: var(--button-bg);
+  color: var(--button-text);
   border: none;
   border-radius: 18px;
   font-size: 14px;
@@ -564,11 +586,11 @@
 }
 
 .comment-submit:hover {
-  background: #e62039;
+  background: var(--button-hover);
 }
 
 .comment-submit:disabled {
-  background: #ccc;
+  background: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.7;
 }
@@ -583,16 +605,16 @@
 }
 
 .button-loading span {
-  color: #fff;
+  color: var(--button-text);
   font-weight: 500;
 }
 
 .comment-login-tip {
   padding: 12px 16px;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   border-radius: 8px;
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
   text-align: center;
   margin-bottom: 20px;
 }
@@ -624,17 +646,17 @@
 .comment-author {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .comment-time {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .comment-reply-quote {
-  background: #f5f5f5;
-  border-left: 3px solid #ff2442;
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--accent-color);
   padding: 8px 12px;
   margin: 8px 0;
   border-radius: 0 4px 4px 0;
@@ -643,20 +665,20 @@
 .reply-quote-author {
   font-size: 13px;
   font-weight: 600;
-  color: #ff2442;
+  color: var(--accent-color);
   display: block;
   margin-bottom: 4px;
 }
 
 .reply-quote-content {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
   display: block;
 }
 
 .comment-text {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0;
   line-height: 1.5;
   word-break: break-word;
@@ -674,7 +696,7 @@
   background: none;
   border: none;
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.2s;
@@ -686,17 +708,17 @@
 }
 
 .comment-reply:hover {
-  color: #1890ff;
+  color: var(--accent-color);
 }
 
 .comment-delete:hover {
-  color: #ff2442;
+  color: var(--accent-color);
 }
 
 .comment-empty {
   text-align: center;
   padding: 24px;
-  color: #999;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -715,8 +737,8 @@
 /* 分享按钮 */
 
 .note-detail-share:hover {
-  background: #e8f4f8;
-  color: #1890ff;
+  background: var(--bg-secondary);
+  color: var(--accent-color);
 }
 
 .note-detail-share:disabled {

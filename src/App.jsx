@@ -28,6 +28,8 @@ const FeedbackManagement = lazy(() => import('./pages/FeedbackManagement'))
 const DatabaseManagement = lazy(() => import('./pages/DatabaseManagement'))
 const TagManagement = lazy(() => import('./pages/TagManagement'))
 const FollowersPage = lazy(() => import('./pages/FollowersPage'))
+const DeveloperCenter = lazy(() => import('./pages/DeveloperCenter'))
+const SystemSettings = lazy(() => import('./pages/SystemSettings'))
 
 export default function App() {
   return (
@@ -143,6 +145,22 @@ export default function App() {
                 <ProtectedRoute>
                   <MyUploads />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-settings"
+              element={
+                <AdminRoute>
+                  <SystemSettings />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/developer-center"
+              element={
+                <AdminRoute>
+                  <DeveloperCenter />
+                </AdminRoute>
               }
             />
           </Routes>

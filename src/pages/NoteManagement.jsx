@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 
-// API基础URL
 const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3004/api'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentUser } from '../utils/db'
@@ -14,7 +13,7 @@ const NoteManagement = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [deleting, setDeleting] = useState(false)
+  const [deleting, setDeleting] = useState(null)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [pageSize, setPageSize] = useState(10)
@@ -22,6 +21,7 @@ const NoteManagement = () => {
   const [editingTags, setEditingTags] = useState(null)
   const [tags, setTags] = useState([])
   const [selectedTag, setSelectedTag] = useState('')
+  const [viewMode, setViewMode] = useState('grid') // 'grid' or 'table'
 
   const fetchTags = async () => {
     try {
@@ -44,10 +44,9 @@ const NoteManagement = () => {
       setLoading(true)
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      
+
       let response, data
       if (selectedTag) {
-        // 按标签筛选
         response = await fetch(`${API_BASE}/tags/${selectedTag}/notes?page=${page}&limit=${pageSize}`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -55,7 +54,6 @@ const NoteManagement = () => {
         })
         data = await response.json()
       } else {
-        // 获取所有笔记
         response = await fetch(`${API_BASE}/notes?page=${page}&limit=${pageSize}`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -63,13 +61,12 @@ const NoteManagement = () => {
         })
         data = await response.json()
       }
-      
-      setNotes(data.notes)
+
+      setNotes(data.notes || [])
       setTotal(data.total || 0)
-      
-      // 为每个笔记获取标签
+
       const notesWithTagsData = {}
-      for (const note of data.notes) {
+      for (const note of data.notes || []) {
         try {
           const tagsResponse = await fetch(`${API_BASE}/notes/${note.id}/tags`, {
             headers: {
@@ -77,14 +74,14 @@ const NoteManagement = () => {
             }
           })
           const tagsData = await tagsResponse.json()
-          notesWithTagsData[note.id] = tagsData
+          notesWithTagsData[note.id] = tagsData || []
         } catch (err) {
           console.error(`Error fetching tags for note ${note.id}:`, err)
           notesWithTagsData[note.id] = []
         }
       }
       setNotesWithTags(notesWithTagsData)
-      
+
       setLoading(false)
     } catch (err) {
       setError('获取笔记列表失败')
@@ -102,11 +99,11 @@ const NoteManagement = () => {
   }, [])
 
   const handleDelete = async (noteId) => {
-    if (!window.confirm('确定要删除这篇笔记吗？')) {
+    if (!window.confirm('确定要删除这篇笔记吗？此操作不可撤销。')) {
       return
     }
 
-    setDeleting(true)
+    setDeleting(noteId)
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
@@ -118,7 +115,6 @@ const NoteManagement = () => {
       })
       const data = await response.json()
       if (data.success) {
-        // 重新加载当前页的笔记
         await fetchNotes()
       } else {
         alert('删除笔记失败：' + data.message)
@@ -127,35 +123,21 @@ const NoteManagement = () => {
       alert('删除笔记失败')
       console.error('Error deleting note:', err)
     } finally {
-      setDeleting(false)
+      setDeleting(null)
     }
   }
 
-  const handlePageSizeChange = (e) => {
-    const newSize = parseInt(e.target.value)
+  const handlePageSizeChange = (newSize) => {
     setPageSize(newSize)
     setPage(1)
   }
 
-  const handlePrevPage = () => {
-    if (page > 1) {
-      setPage(page - 1)
-    }
-  }
-
-  const handleNextPage = () => {
-    const totalPages = Math.ceil(total / pageSize)
-    if (page < totalPages) {
-      setPage(page + 1)
-    }
-  }
-
-  const handleUpdateTags = async (noteId, tags) => {
+  const handleUpdateTags = async (noteId, newTags) => {
     try {
       const currentUser = getCurrentUser()
       const token = currentUser ? currentUser.token : null
-      const tagIds = tags.map(tag => tag.id)
-      
+      const tagIds = newTags.map(tag => tag.id)
+
       await fetch(`${API_BASE}/notes/${noteId}/tags`, {
         method: 'POST',
         headers: {
@@ -164,13 +146,12 @@ const NoteManagement = () => {
         },
         body: JSON.stringify({ tagIds })
       })
-      
-      // 更新本地状态
+
       setNotesWithTags(prev => ({
         ...prev,
-        [noteId]: tags
+        [noteId]: newTags
       }))
-      
+
       setEditingTags(null)
     } catch (err) {
       console.error('Error updating tags:', err)
@@ -182,6 +163,8 @@ const NoteManagement = () => {
     note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     note.author_name.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const totalPages = Math.ceil(total / pageSize)
 
   if (loading) {
     return (
@@ -197,134 +180,296 @@ const NoteManagement = () => {
 
   return (
     <div className="note-management-container">
-      <h1 className="note-management-title">笔记管理</h1>
+      <div className="note-management-header">
+        <h1 className="note-management-title">📋 笔记管理</h1>
+        <div className="note-management-stats">
+          <span className="stat-item">共 {total} 篇笔记</span>
+        </div>
+      </div>
 
       <div className="note-management-controls">
-        <input
-          type="text"
-          placeholder="搜索笔记标题或作者..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
-        />
-        <div className="tag-filter">
-          <label htmlFor="tagFilter">按标签筛选：</label>
-          <select 
-            id="tagFilter" 
-            value={selectedTag} 
-            onChange={(e) => setSelectedTag(e.target.value)}
-            className="tag-select"
-          >
-            <option value="">全部标签</option>
-            {tags.map(tag => (
-              <option key={tag.id} value={tag.id}>{tag.name}</option>
-            ))}
-          </select>
+        <div className="control-left">
+          <div className="search-box">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="搜索标题或作者..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+            {searchTerm && (
+              <button className="search-clear" onClick={() => setSearchTerm('')}>✕</button>
+            )}
+          </div>
+
+          <div className="filter-group">
+            <label>标签：</label>
+            <select
+              value={selectedTag}
+              onChange={(e) => {
+                setSelectedTag(e.target.value)
+                setPage(1)
+              }}
+              className="filter-select"
+            >
+              <option value="">全部</option>
+              {tags.map(tag => (
+                <option key={tag.id} value={tag.id}>{tag.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="page-size-selector">
-          <label htmlFor="pageSize">每页显示：</label>
-          <select 
-            id="pageSize" 
-            value={pageSize} 
-            onChange={handlePageSizeChange}
-            className="page-size-select"
-          >
-            <option value={10}>10条</option>
-            <option value={20}>20条</option>
-            <option value={30}>30条</option>
-            <option value={50}>50条</option>
-          </select>
+
+        <div className="control-right">
+          <div className="view-toggle">
+            <button
+              className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              onClick={() => setViewMode('grid')}
+            >
+              ▦
+            </button>
+            <button
+              className={`view-btn ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => setViewMode('table')}
+            >
+              ☰
+            </button>
+          </div>
+
+          <div className="size-selector">
+            <label>显示：</label>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
+              className="size-select"
+            >
+              <option value={10}>10条</option>
+              <option value={20}>20条</option>
+              <option value={30}>30条</option>
+              <option value={50}>50条</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="notes-list">
-        {filteredNotes.map(note => (
-          <div key={note.id} className="note-card">
-            <div className="note-info">
-              <h3>{note.title}</h3>
-              <p className="note-author">作者：{note.author_name}</p>
-              <p className="note-date">发布时间: {new Date(note.created_at).toLocaleString()}</p>
-              <p className="note-likes">点赞数: {note.likes}</p>
-              
-              {/* 标签显示 */}
-              <div className="note-tags">
-                <strong>标签：</strong>
-                {editingTags === note.id ? (
-                  <TagInput 
-                    selectedTags={notesWithTags[note.id] || []} 
-                    onChange={(tags) => handleUpdateTags(note.id, tags)}
-                    placeholder="输入标签，按回车添加"
-                  />
-                ) : (
-                  <div className="tags-display">
-                    {notesWithTags[note.id] && notesWithTags[note.id].length > 0 ? (
-                      notesWithTags[note.id].map(tag => (
-                        <span key={tag.id} className="tag">{tag.name}</span>
-                      ))
-                    ) : (
-                      <span className="no-tags">无标签</span>
-                    )}
-                    <button 
-                      onClick={() => setEditingTags(note.id)}
-                      className="edit-tags-btn"
-                    >
-                      编辑标签
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              {note.images && note.images.length > 0 && (
-                <div className="note-images">
-                  <img 
-                    src={note.images[0]} 
-                    alt={note.title} 
-                    className="note-image" 
-                    loading="lazy"
-                  />
-                  {note.images.length > 1 && (
-                    <span className="more-images">+{note.images.length - 1}</span>
+      {viewMode === 'grid' ? (
+        <div className="notes-grid">
+          {filteredNotes.length > 0 ? (
+            filteredNotes.map(note => (
+              <div key={note.id} className="note-card">
+                <div className="note-card-image">
+                  {note.coverImage ? (
+                    <img src={note.coverImage} alt={note.title} />
+                  ) : (
+                    <div className="no-image">无图片</div>
+                  )}
+                  {note.imagesCount > 1 && (
+                    <span className="image-count">📷 {note.imagesCount}</span>
                   )}
                 </div>
-              )}
-            </div>
-            <div className="note-actions">
-              <button onClick={() => handleDelete(note.id)} className="btn-delete" disabled={deleting}>
-                {deleting ? (
-                  <div className="button-loading">
-                    <Loading text="" size="small" />
-                    <span>删除中...</span>
-                  </div>
-                ) : '删除'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
 
-      {filteredNotes.length === 0 && (
-        <div className="no-notes">没有找到笔记</div>
+                <div className="note-card-body">
+                  <h3 className="note-title" title={note.title}>{note.title}</h3>
+
+                  <div className="note-meta">
+                    <span className="meta-author">👤 {note.author_name}</span>
+                    <span className="meta-date">{new Date(note.created_at).toLocaleDateString()}</span>
+                  </div>
+
+                  <div className="note-stats">
+                    <span className="stat">❤️ {note.likes || 0}</span>
+                    <span className="stat">💬 {note.comments?.length || 0}</span>
+                  </div>
+
+                  <div className="note-tags-section">
+                    {editingTags === note.id ? (
+                      <div className="tag-edit-mode">
+                        <TagInput
+                          selectedTags={notesWithTags[note.id] || []}
+                          onChange={(tags) => handleUpdateTags(note.id, tags)}
+                          placeholder="输入标签"
+                        />
+                        <button
+                          className="tag-cancel-btn"
+                          onClick={() => setEditingTags(null)}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="tags-row">
+                        {(notesWithTags[note.id] || []).slice(0, 3).map(tag => (
+                          <span key={tag.id} className="tag-badge">{tag.name}</span>
+                        ))}
+                        {(notesWithTags[note.id] || []).length > 3 && (
+                          <span className="tag-more">+{notesWithTags[note.id].length - 3}</span>
+                        )}
+                        {(notesWithTags[note.id] || []).length === 0 && (
+                          <span className="no-tags-text">暂无标签</span>
+                        )}
+                        <button
+                          className="tag-edit-btn"
+                          onClick={() => setEditingTags(note.id)}
+                          title="编辑标签"
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="note-card-actions">
+                  <button
+                    className="action-btn delete-btn"
+                    onClick={() => handleDelete(note.id)}
+                    disabled={deleting === note.id}
+                  >
+                    {deleting === note.id ? (
+                      <Loading text="" size="small" />
+                    ) : (
+                      '🗑️ 删除'
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="empty-state">
+              <div className="empty-icon">📭</div>
+              <p>没有找到笔记</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="notes-table-container">
+          <table className="notes-table">
+            <thead>
+              <tr>
+                <th style={{ width: '60px' }}>图片</th>
+                <th>标题</th>
+                <th>作者</th>
+                <th>发布时间</th>
+                <th>点赞</th>
+                <th>标签</th>
+                <th style={{ width: '100px' }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredNotes.length > 0 ? (
+                filteredNotes.map(note => (
+                  <tr key={note.id}>
+                    <td>
+                      {note.coverImage ? (
+                        <img src={note.coverImage} alt="" className="table-thumb" />
+                      ) : (
+                        <div className="table-no-img">-</div>
+                      )}
+                    </td>
+                    <td className="table-title" title={note.title}>{note.title}</td>
+                    <td>{note.author_name}</td>
+                    <td>{new Date(note.created_at).toLocaleDateString()}</td>
+                    <td>{note.likes || 0}</td>
+                    <td>
+                      <div className="table-tags">
+                        {(notesWithTags[note.id] || []).slice(0, 2).map(tag => (
+                          <span key={tag.id} className="tag-badge small">{tag.name}</span>
+                        ))}
+                        {(notesWithTags[note.id] || []).length > 2 && (
+                          <span className="tag-more">+{notesWithTags[note.id].length - 2}</span>
+                        )}
+                        {(notesWithTags[note.id] || []).length === 0 && (
+                          <span className="no-tags-text">-</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="table-actions">
+                        <button
+                          className="table-btn edit"
+                          onClick={() => setEditingTags(note.id)}
+                          title="编辑标签"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="table-btn delete"
+                          onClick={() => handleDelete(note.id)}
+                          disabled={deleting === note.id}
+                          title="删除"
+                        >
+                          {deleting === note.id ? '...' : '🗑️'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="empty-cell">没有找到笔记</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {total > pageSize && (
-        <div className="note-management-pagination">
-          <button 
-            className={`pagination-button ${page === 1 ? 'disabled' : ''}`}
-            onClick={handlePrevPage}
-            disabled={page === 1}
-          >
-            上一页
-          </button>
-          <span className="pagination-info">
-            第 {page} 页，共 {Math.ceil(total / pageSize)} 页
-          </span>
-          <button 
-            className={`pagination-button ${page === Math.ceil(total / pageSize) ? 'disabled' : ''}`}
-            onClick={handleNextPage}
-            disabled={page === Math.ceil(total / pageSize)}
-          >
-            下一页
-          </button>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <div className="pagination-info">
+            显示第 {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} 条，共 {total} 条
+          </div>
+          <div className="pagination-controls">
+            <button
+              className={`page-btn ${page === 1 ? 'disabled' : ''}`}
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+            >
+              ««
+            </button>
+            <button
+              className={`page-btn ${page === 1 ? 'disabled' : ''}`}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              «
+            </button>
+            <span className="page-current">{page} / {totalPages}</span>
+            <button
+              className={`page-btn ${page === totalPages ? 'disabled' : ''}`}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              »
+            </button>
+            <button
+              className={`page-btn ${page === totalPages ? 'disabled' : ''}`}
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages}
+            >
+              »»
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editingTags && (
+        <div className="modal-overlay" onClick={() => setEditingTags(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>编辑标签</h3>
+              <button className="modal-close" onClick={() => setEditingTags(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-note-title">{notes.find(n => n.id === editingTags)?.title}</p>
+              <TagInput
+                selectedTags={notesWithTags[editingTags] || []}
+                onChange={(tags) => handleUpdateTags(editingTags, tags)}
+                placeholder="输入标签，按回车添加"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

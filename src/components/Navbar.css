@@ -108,17 +108,30 @@
   right: 0;
   background: var(--nav-bg);
   box-shadow: var(--nav-shadow);
-  padding: 16px 0;
+  padding: 8px 0;
   z-index: 999;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+}
+
+.navbar-mobile-menu.open {
+  max-height: calc(100vh - 60px);
+  opacity: 1;
+  padding: 16px 0;
 }
 
 .navbar-mobile-link {
   display: block;
-  padding: 12px 20px;
+  padding: 14px 20px;
   color: var(--text-primary);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 15px;
   transition: background-color 0.2s;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
 }
 
 .navbar-mobile-link:hover {
@@ -130,11 +143,14 @@
   border: none;
   width: 100%;
   text-align: left;
-  padding: 12px 20px;
+  padding: 14px 20px;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   font-family: inherit;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
 }
 
 .navbar-mobile-logout:hover {
@@ -152,9 +168,14 @@
   border: none;
   cursor: pointer;
   font-size: 16px;
-  padding: 4px 8px;
+  padding: 8px 12px;
   border-radius: 4px;
   transition: background-color 0.2s;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .navbar-language-toggle:hover {
@@ -167,11 +188,19 @@
   right: 0;
   background: var(--nav-bg);
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
-  margin-top: 4px;
+  border-radius: 8px;
+  margin-top: 8px;
   padding: 8px 0;
-  min-width: 120px;
+  min-width: 140px;
   z-index: 1001;
+}
+
+@media (max-width: 768px) {
+  .navbar-language-dropdown {
+    right: -60px;
+    left: auto;
+    min-width: 120px;
+  }
 }
 
 .navbar-language-option {
@@ -218,13 +247,16 @@
 }
 
 .navbar-mobile-language-option {
-  padding: 6px 12px;
+  padding: 10px 16px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  font-size: 12px;
+  border-radius: 20px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 .navbar-mobile-language-option:hover {
@@ -242,17 +274,30 @@
   .navbar-links {
     display: none;
   }
-  
+
   .navbar-menu-toggle {
     display: flex;
   }
-  
+
   .navbar-content {
     padding: 0 16px;
   }
-  
+
   .navbar-logo {
     font-size: 18px;
+  }
+
+  .navbar-link {
+    font-size: 15px;
+    padding: 8px 12px;
+  }
+
+  .navbar-logout {
+    font-size: 15px;
+    padding: 8px 12px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
 }
 

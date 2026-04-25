@@ -15,14 +15,50 @@ export class CacheManager {
   constructor(options = {}) {
     this.useRedis = options.useRedis || false
     this.redisClient = null
-    this.memoryCache = new NodeCache({ 
-      stdTTL: 600, // 默认10分钟过期
-      checkperiod: 120 // 每2分钟清理过期数据
+
+    // 缓存配置
+    this.config = {
+      stdTTL: options.stdTTL || 600,
+      checkperiod: options.checkperiod || 120
+    }
+
+    this.memoryCache = new NodeCache({
+      stdTTL: this.config.stdTTL,
+      checkperiod: this.config.checkperiod
     })
+
+    // 缓存命中统计
+    this.stats = {
+      hits: 0,
+      misses: 0,
+      sets: 0,
+      deletes: 0
+    }
 
     if (this.useRedis && options.redisUrl) {
       this.initRedis(options.redisUrl)
     }
+  }
+
+  // 获取当前配置
+  getConfig() {
+    return { ...this.config }
+  }
+
+  // 更新配置
+  updateConfig(newConfig) {
+    if (newConfig.stdTTL !== undefined) {
+      this.config.stdTTL = newConfig.stdTTL
+    }
+    if (newConfig.checkperiod !== undefined) {
+      this.config.checkperiod = newConfig.checkperiod
+    }
+    // 重新创建 NodeCache 实例以应用新配置
+    this.memoryCache = new NodeCache({
+      stdTTL: this.config.stdTTL,
+      checkperiod: this.config.checkperiod
+    })
+    return this.config
   }
 
   // Redis初始化
@@ -58,12 +94,26 @@ export class CacheManager {
     try {
       if (this.useRedis && this.redisClient) {
         const value = await this.redisClient.get(key)
-        return value ? JSON.parse(value) : null
+        if (value) {
+          this.stats.hits++
+          return JSON.parse(value)
+        } else {
+          this.stats.misses++
+          return null
+        }
       } else {
-        return this.memoryCache.get(key)
+        const value = this.memoryCache.get(key)
+        if (value !== undefined) {
+          this.stats.hits++
+          return value
+        } else {
+          this.stats.misses++
+          return null
+        }
       }
     } catch (error) {
       console.error(`Cache get error for key ${key}:`, error)
+      this.stats.misses++
       return null
     }
   }
@@ -81,6 +131,7 @@ export class CacheManager {
       } else {
         this.memoryCache.set(key, value, ttl)
       }
+      this.stats.sets++
     } catch (error) {
       console.error(`Cache set error for key ${key}:`, error)
     }
@@ -97,6 +148,7 @@ export class CacheManager {
       } else {
         this.memoryCache.del(key)
       }
+      this.stats.deletes++
     } catch (error) {
       console.error(`Cache delete error for key ${key}:`, error)
     }
@@ -173,16 +225,33 @@ export class CacheManager {
       const info = await this.redisClient.info('stats')
       return {
         backend: 'Redis',
-        info: info
+        info: info,
+        hits: this.stats.hits,
+        misses: this.stats.misses,
+        sets: this.stats.sets,
+        deletes: this.stats.deletes
       }
     } else {
       const keys = this.memoryCache.keys()
+      const hitRate = (this.stats.hits + this.stats.misses) > 0
+        ? (this.stats.hits / (this.stats.hits + this.stats.misses) * 100).toFixed(2)
+        : '0.00'
       return {
         backend: 'Memory',
         keysCount: keys.length,
-        keys: keys
+        keys: keys,
+        hits: this.stats.hits,
+        misses: this.stats.misses,
+        sets: this.stats.sets,
+        deletes: this.stats.deletes,
+        hitRate: hitRate + '%'
       }
     }
+  }
+
+  // 重置统计
+  resetStats() {
+    this.stats = { hits: 0, misses: 0, sets: 0, deletes: 0 }
   }
 
   /**

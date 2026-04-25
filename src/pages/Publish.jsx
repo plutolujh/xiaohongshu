@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { createNote } from '../utils/db'
@@ -6,7 +6,8 @@ import heic2any from 'heic2any'
 import TagInput from '../components/TagInput'
 import './Publish.css'
 
-const templates = [
+// 默认模板
+const defaultTemplates = [
   {
     id: 'trending',
     name: '网红美食',
@@ -81,6 +82,12 @@ const templates = [
   }
 ]
 
+// 从 localStorage 获取模板
+const getTemplates = () => {
+  const saved = localStorage.getItem('noteTemplates')
+  return saved ? JSON.parse(saved) : defaultTemplates
+}
+
 export default function Publish() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -89,8 +96,24 @@ export default function Publish() {
   const [loading, setLoading] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [selectedTags, setSelectedTags] = useState([])
+  const [templates, setTemplates] = useState(getTemplates)
   const { user } = useAuth()
   const navigate = useNavigate()
+
+  // 监听模板变化
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setTemplates(getTemplates())
+    }
+    window.addEventListener('storage', handleStorageChange)
+    // 也监听本地事件（同一页面内更新）
+    const handleLocalUpdate = () => setTemplates(getTemplates())
+    window.addEventListener('noteTemplatesUpdated', handleLocalUpdate)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('noteTemplatesUpdated', handleLocalUpdate)
+    }
+  }, [])
 
   const handleTemplateSelect = (template) => {
     if (selectedTemplate === template.id) {

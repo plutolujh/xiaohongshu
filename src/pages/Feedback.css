@@ -1,6 +1,6 @@
 .feedback-container {
   min-height: 100vh;
-  background: #f8f8f8;
+  background: var(--bg-secondary);
   padding: 80px 20px 40px;
   display: flex;
   align-items: center;
@@ -10,23 +10,24 @@
 .feedback-card {
   width: 100%;
   max-width: 600px;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16px;
   padding: 40px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
 }
 
 .feedback-card h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 8px;
   text-align: center;
 }
 
 .feedback-subtitle {
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
   margin: 0 0 32px;
   text-align: center;
 }
@@ -46,30 +47,32 @@
 .feedback-field label {
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .feedback-field input,
 .feedback-field select,
 .feedback-field textarea {
   padding: 12px 16px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
   font-family: inherit;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 .feedback-field input:focus,
 .feedback-field select:focus,
 .feedback-field textarea:focus {
-  border-color: #ff2442;
+  border-color: var(--accent-color);
 }
 
 .feedback-field input::placeholder,
 .feedback-field textarea::placeholder {
-  color: #bbb;
+  color: var(--text-muted);
 }
 
 .feedback-field textarea {
@@ -79,7 +82,7 @@
 
 .feedback-button {
   height: 44px;
-  background: #ff2442;
+  background: var(--accent-color);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -88,6 +91,7 @@
   cursor: pointer;
   transition: background 0.2s;
   margin-top: 8px;
+  min-height: 44px;
 }
 
 .feedback-button:hover:not(:disabled) {
@@ -95,16 +99,16 @@
 }
 
 .feedback-button:disabled {
-  background: #ccc;
+  background: var(--text-muted);
   cursor: not-allowed;
 }
 
 .feedback-error {
   padding: 12px 16px;
-  background: #fff0f0;
-  border: 1px solid #ffcccc;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-color);
   border-radius: 8px;
-  color: #ff2442;
+  color: var(--accent-color);
   font-size: 14px;
   margin-bottom: 16px;
 }
@@ -112,9 +116,9 @@
 .feedback-success {
   padding: 12px 16px;
   background: #f0fff0;
-  border: 1px solid #ccffcc;
+  border: 1px solid #28a745;
   border-radius: 8px;
-  color: #24ff24;
+  color: #28a745;
   font-size: 14px;
   margin-bottom: 16px;
 }
@@ -122,13 +126,13 @@
 .feedback-tips {
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-color);
 }
 
 .feedback-tips h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 12px;
 }
 
@@ -140,7 +144,7 @@
 
 .feedback-tips li {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 8px;
   padding-left: 20px;
   position: relative;
@@ -150,7 +154,7 @@
   content: '•';
   position: absolute;
   left: 0;
-  color: #ff2442;
+  color: var(--accent-color);
   font-weight: bold;
 }
 
@@ -159,34 +163,36 @@
   .feedback-container {
     padding: 70px 16px 30px;
   }
-  
+
   .feedback-card {
     padding: 32px 24px;
   }
-  
+
   .feedback-card h2 {
     font-size: 20px;
   }
-  
+
   .feedback-subtitle {
     margin-bottom: 24px;
   }
-  
+
   .feedback-form {
     gap: 16px;
   }
-  
+
   .feedback-field input,
   .feedback-field select,
   .feedback-field textarea {
     padding: 10px 14px;
+    min-height: 44px;
   }
-  
+
   .feedback-button {
-    height: 40px;
+    height: 48px;
+    min-height: 48px;
     font-size: 14px;
   }
-  
+
   .feedback-tips {
     margin-top: 24px;
     padding-top: 20px;
@@ -197,11 +203,11 @@
   .feedback-card {
     padding: 24px 20px;
   }
-  
+
   .feedback-card h2 {
     font-size: 18px;
   }
-  
+
   .feedback-subtitle {
     font-size: 13px;
   }

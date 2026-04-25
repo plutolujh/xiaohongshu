@@ -14,6 +14,7 @@ import { NoteRepository } from './repositories/NoteRepository.js'
 import { UserRepository } from './repositories/UserRepository.js'
 import { CommentRepository } from './repositories/CommentRepository.js'
 import { FeedbackRepository } from './repositories/FeedbackRepository.js'
+import { CacheManager } from './src/utils/CacheManager.js'
 import logger from './src/utils/logger.js'
 import monitor from './src/utils/monitor.js'
 
@@ -49,30 +50,28 @@ const userRepo = new UserRepository(supabase)
 const commentRepo = new CommentRepository(supabase)
 const feedbackRepo = new FeedbackRepository(supabase)
 
+// CacheManager初始化 - 支持Redis和内存缓存
+const cache = new CacheManager({
+  useRedis: !!process.env.REDIS_URL,
+  redisUrl: process.env.REDIS_URL
+})
+console.log(`Cache initialized: ${cache.useRedis ? 'Redis' : 'Memory (node-cache)'}`)
+
+// 缓存键常量
+const CACHE_KEYS = {
+  TAGS_ALL: 'tags:all',
+  TAGS_POPULAR: (limit) => `tags:popular:${limit}`,
+  NOTE_DETAIL: (id, full) => `note:${id}:full:${full}`,
+  NOTES_PAGE: (page, limit, authorId) => `notes:page:${page}:${limit}:${authorId || 'all'}`,
+  USER_PROFILE: (id) => `user:${id}:profile`,
+  USER_BY_USERNAME: (username) => `user:username:${username}`,
+  USER_FOLLOW_COUNTS: (id) => `user:${id}:follow-counts`,
+  COMMENTS_NOTE: (noteId) => `comments:note:${noteId}`,
+  NOTE_TAGS: (noteId) => `note:${noteId}:tags`
+}
+
 const app = express()
 const PORT = process.env.PORT || 3004
-
-// 标签缓存
-const tagCache = {
-  data: null,
-  timestamp: 0,
-  ttl: 30000 // 30秒缓存
-}
-
-// 获取缓存的标签
-function getCachedTags() {
-  const now = Date.now()
-  if (tagCache.data && (now - tagCache.timestamp) < tagCache.ttl) {
-    return tagCache.data
-  }
-  return null
-}
-
-// 设置标签缓存
-function setCachedTags(data) {
-  tagCache.data = data
-  tagCache.timestamp = Date.now()
-}
 
 // 数据库连接状态
 let dbConnected = false
@@ -157,9 +156,10 @@ function validateRequest(req, res, next) {
     '/my/uploads',
     '/health', '/status',
     '/db/info', '/db/tables', '/db/table/:tableName', '/db/table/:tableName/structure', '/db/query', '/db/backup',
-    '/test/supabase-ddl', '/user-uploads/create-table', '/test/create-table', '/test/insert-data', '/test/data'
+    '/test/supabase-ddl', '/user-uploads/create-table', '/test/create-table', '/test/insert-data', '/test/data',
+    '/admin/cache/status', '/admin/cache/clear', '/admin/cache/:key'
   ]
-  
+
   let pathValid = false
   for (const path of validPaths) {
     const regex = new RegExp('^' + path.replace(/:\w+/g, '[^/]+') + '$')
@@ -1840,6 +1840,10 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       `UPDATE users SET nickname = $1, avatar = $2, bio = $3, background = $4 WHERE id = $5`,
       [nickname.trim(), avatar, bio ? bio.trim() : '', background || '', req.params.id]
     )
+
+    // 清除用户缓存
+    await cache.delete(CACHE_KEYS.USER_PROFILE(req.params.id))
+
     res.json({ success: true })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -1891,13 +1895,16 @@ app.put('/api/users/:id/role', authenticateToken, requireAdmin, async (req, res)
 
 app.get('/api/users/:username', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM users WHERE username = $1', [req.params.username])
-    if (result.rows.length === 0) {
-      return res.json(null)
-    }
-    const user = result.rows[0]
-    // 移除密码字段
-    delete user.password
+    const { username } = req.params
+
+    const user = await cache.getOrSet(CACHE_KEYS.USER_BY_USERNAME(username), async () => {
+      const result = await query('SELECT * FROM users WHERE username = $1', [username])
+      if (result.rows.length === 0) return null
+      const user = result.rows[0]
+      delete user.password
+      return user
+    }, 1800) // 30分钟缓存
+
     res.json(user)
   } catch (e) {
     res.json(null)
@@ -1907,13 +1914,16 @@ app.get('/api/users/:username', async (req, res) => {
 // 根据ID获取用户信息
 app.get('/api/user/:id', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM users WHERE id = $1', [req.params.id])
-    if (result.rows.length === 0) {
-      return res.json(null)
-    }
-    const user = result.rows[0]
-    // 移除密码字段
-    delete user.password
+    const { id } = req.params
+
+    const user = await cache.getOrSet(CACHE_KEYS.USER_PROFILE(id), async () => {
+      const result = await query('SELECT * FROM users WHERE id = $1', [id])
+      if (result.rows.length === 0) return null
+      const user = result.rows[0]
+      delete user.password
+      return user
+    }, 1800) // 30分钟缓存
+
     res.json(user)
   } catch (e) {
     res.json(null)
@@ -1974,6 +1984,10 @@ app.post('/api/users/:id/follow', authenticateToken, async (req, res) => {
       [followerId, followingId]
     )
 
+    // 清除相关用户的关注计数缓存
+    await cache.delete(CACHE_KEYS.USER_FOLLOW_COUNTS(followerId))
+    await cache.delete(CACHE_KEYS.USER_FOLLOW_COUNTS(followingId))
+
     res.json({ success: true, message: '关注成功' })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -1990,6 +2004,10 @@ app.delete('/api/users/:id/follow', authenticateToken, async (req, res) => {
       'DELETE FROM follows WHERE follower_id = $1 AND following_id = $2',
       [followerId, followingId]
     )
+
+    // 清除相关用户的关注计数缓存
+    await cache.delete(CACHE_KEYS.USER_FOLLOW_COUNTS(followerId))
+    await cache.delete(CACHE_KEYS.USER_FOLLOW_COUNTS(followingId))
 
     res.json({ success: true, message: '取消关注成功' })
   } catch (e) {
@@ -2222,35 +2240,35 @@ app.get('/api/users/:id/follow-status/:targetId', authenticateToken, async (req,
   }
 })
 
-// 获取用户关注数和粉丝数
+// 获取用户关注数和粉丝数 - 使用缓存
 app.get('/api/users/:id/follow-counts', async (req, res) => {
   const { id: userId } = req.params
 
   try {
-    // 直接使用Supabase查询，避免generic query function的解析问题
-    const { count: followingCount, error: followingError } = await supabase
-      .from('follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('follower_id', userId)
+    const data = await cache.getOrSet(CACHE_KEYS.USER_FOLLOW_COUNTS(userId), async () => {
+      const { count: followingCount } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId)
 
-    const { count: followersCount, error: followersError } = await supabase
-      .from('follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('following_id', userId)
+      const { count: followersCount } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userId)
 
-    const { count: notesCount, error: notesError } = await supabase
-      .from('notes')
-      .select('*', { count: 'exact', head: true })
-      .eq('author_id', userId)
+      const { count: notesCount } = await supabase
+        .from('notes')
+        .select('*', { count: 'exact', head: true })
+        .eq('author_id', userId)
 
-    res.json({
-      success: true,
-      data: {
+      return {
         following: followingCount || 0,
         followers: followersCount || 0,
         notes: notesCount || 0
       }
-    })
+    }, 300) // 5分钟缓存
+
+    res.json({ success: true, data })
   } catch (e) {
     res.json({ success: false, message: e.message })
   }
@@ -2343,144 +2361,76 @@ app.get('/api/notes', async (req, res) => {
   const authorId = req.query.author
   // 分页上限验证
   limit = Math.min(Math.max(limit, 1), 100)
-  const offset = (page - 1) * limit
 
   try {
-    // 检查数据库连接
-    if (!dbConnected) {
-      // 返回模拟数据
-      const mockNotes = [
-        {
-          id: '1',
-          title: '美味的意大利面',
-          coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=delicious%20italian%20pasta%20with%20tomato%20sauce&image_size=square',
-          imagesCount: 3,
-          author_id: '1',
-          author_name: '美食达人',
-          likes: 123,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: '自制蛋糕',
-          coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=homemade%20chocolate%20cake&image_size=square',
-          imagesCount: 5,
-          author_id: '2',
-          author_name: '烘焙大师',
-          likes: 89,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: '3',
-          title: '清爽沙拉',
-          coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=fresh%20green%20salad%20with%20vegetables&image_size=square',
-          imagesCount: 2,
-          author_id: '1',
-          author_name: '美食达人',
-          likes: 45,
-          created_at: new Date().toISOString()
+    // 使用缓存
+    const result = await cache.getOrSet(CACHE_KEYS.NOTES_PAGE(page, limit, authorId), async () => {
+      // 检查数据库连接
+      if (!dbConnected) {
+        const mockNotes = [
+          { id: '1', title: '美味的意大利面', coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=delicious%20italian%20pasta%20with%20tomato%20sauce&image_size=square', imagesCount: 3, author_id: '1', author_name: '美食达人', likes: 123, created_at: new Date().toISOString() },
+          { id: '2', title: '自制蛋糕', coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=homemade%20chocolate%20cake&image_size=square', imagesCount: 5, author_id: '2', author_name: '烘焙大师', likes: 89, created_at: new Date().toISOString() },
+          { id: '3', title: '清爽沙拉', coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=fresh%20green%20salad%20with%20vegetables&image_size=square', imagesCount: 2, author_id: '1', author_name: '美食达人', likes: 45, created_at: new Date().toISOString() }
+        ]
+        return { notes: mockNotes, total: mockNotes.length, page, limit }
+      }
+
+      const offset = (page - 1) * limit
+
+      // 直接使用Supabase SDK查询，避免SQL解析问题
+      let supabaseQuery = supabase
+        .from('notes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+        .range(offset, offset + limit - 1)
+
+      // 如果有作者过滤
+      if (authorId) {
+        supabaseQuery = supabaseQuery.eq('author_id', authorId)
+      }
+
+      const { data: notesData, error } = await supabaseQuery
+      if (error) throw error
+
+      // 获取总数
+      let countQuery = supabase.from('notes').select('id', { count: 'exact', head: true })
+      if (authorId) countQuery = countQuery.eq('author_id', authorId)
+      const { count: total } = await countQuery
+
+      // 批量查询作者头像
+      const authorIds = [...new Set(notesData.map(row => row.author_id).filter(Boolean))]
+      let authorsMap = {}
+      if (authorIds.length > 0) {
+        const { data: usersData } = await supabase.from('users').select('id, avatar').in('id', authorIds)
+        if (usersData) usersData.forEach(user => { authorsMap[user.id] = user.avatar })
+      }
+
+      const notes = notesData.map(row => {
+        const images = JSON.parse(row.images || '[]')
+        return {
+          id: row.id,
+          title: row.title,
+          coverImage: images.length > 0 ? images[0] : null,
+          imagesCount: images.length,
+          author_id: row.author_id,
+          author_name: row.author_name,
+          author_avatar: authorsMap[row.author_id] || null,
+          likes: row.likes,
+          created_at: row.created_at
         }
-      ]
-      res.json({ notes: mockNotes, total: mockNotes.length, page, limit })
-      return
-    }
+      })
 
-    // 直接使用Supabase SDK查询，避免SQL解析问题
-    let supabaseQuery = supabase
-      .from('notes')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit)
-      .range(offset, offset + limit - 1)
+      return { notes, total: total || 0, page, limit }
+    }, 60) // 1分钟缓存
 
-    // 如果有作者过滤
-    if (authorId) {
-      supabaseQuery = supabaseQuery.eq('author_id', authorId)
-    }
-
-    // 执行查询
-    const { data: notesData, error } = await supabaseQuery
-    if (error) {
-      console.error('Error querying notes:', error)
-      throw error
-    }
-
-    // 获取总数
-    let countQuery = supabase.from('notes').select('id', { count: 'exact', head: true })
-    if (authorId) {
-      countQuery = countQuery.eq('author_id', authorId)
-    }
-    const { count: total } = await countQuery
-
-    // 获取所有笔记的作者ID
-    const authorIds = [...new Set(notesData.map(row => row.author_id).filter(Boolean))]
-    
-    // 批量查询作者头像
-    let authorsMap = {}
-    if (authorIds.length > 0) {
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('id, avatar')
-        .in('id', authorIds)
-      
-      if (usersData) {
-        usersData.forEach(user => {
-          authorsMap[user.id] = user.avatar
-        })
-      }
-    }
-
-    const notes = notesData.map(row => {
-      const images = JSON.parse(row.images || '[]')
-      const coverImage = images.length > 0 ? images[0] : null
-      const authorAvatar = authorsMap[row.author_id] || null
-      return {
-        id: row.id,
-        title: row.title,
-        coverImage,
-        imagesCount: images.length,
-        author_id: row.author_id,
-        author_name: row.author_name,
-        author_avatar: authorAvatar,
-        likes: row.likes,
-        created_at: row.created_at
-      }
-    })
-
-    res.json({ notes, total: total || 0, page, limit })
+    res.json(result)
   } catch (e) {
-    // 返回模拟数据作为备用
+    console.error('Error in GET /api/notes:', e)
     const mockNotes = [
-      {
-        id: '1',
-        title: '美味的意大利面',
-        coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=delicious%20italian%20pasta%20with%20tomato%20sauce&image_size=square',
-        imagesCount: 3,
-        author_id: '1',
-        author_name: '美食达人',
-        likes: 123,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: '2',
-        title: '自制蛋糕',
-        coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=homemade%20chocolate%20cake&image_size=square',
-        imagesCount: 5,
-        author_id: '2',
-        author_name: '烘焙大师',
-        likes: 89,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: '3',
-        title: '清爽沙拉',
-        coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=fresh%20green%20salad%20with%20vegetables&image_size=square',
-        imagesCount: 2,
-        author_id: '1',
-        author_name: '美食达人',
-        likes: 45,
-        created_at: new Date().toISOString()
-      }
+      { id: '1', title: '美味的意大利面', coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=delicious%20italian%20pasta%20with%20tomato%20sauce&image_size=square', imagesCount: 3, author_id: '1', author_name: '美食达人', likes: 123, created_at: new Date().toISOString() },
+      { id: '2', title: '自制蛋糕', coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=homemade%20chocolate%20cake&image_size=square', imagesCount: 5, author_id: '2', author_name: '烘焙大师', likes: 89, created_at: new Date().toISOString() },
+      { id: '3', title: '清爽沙拉', coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=fresh%20green%20salad%20with%20vegetables&image_size=square', imagesCount: 2, author_id: '1', author_name: '美食达人', likes: 45, created_at: new Date().toISOString() }
     ]
     res.json({ notes: mockNotes, total: mockNotes.length, page, limit })
   }
@@ -2488,7 +2438,7 @@ app.get('/api/notes', async (req, res) => {
 
 app.post('/api/notes', authenticateToken, async (req, res) => {
   const { id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at } = req.body
-  
+
   // 输入验证
   if (!title || title.trim().length === 0) {
     return res.json({ success: false, message: '标题不能为空' })
@@ -2508,15 +2458,18 @@ app.post('/api/notes', authenticateToken, async (req, res) => {
   if (images.length > 9) {
     return res.json({ success: false, message: '最多上传9张图片' })
   }
-  
+
   try {
-    // 如果没有传递created_at，设置为当前时间
     const now = new Date().toISOString()
     await query(
-      `INSERT INTO notes (id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at) 
+      `INSERT INTO notes (id, title, content, ingredients, steps, images, author_id, author_name, likes, liked, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [id, title.trim(), content.trim(), ingredients, steps, JSON.stringify(images), author_id, author_name, likes || 0, liked ? 1 : 0, created_at || now]
     )
+
+    // 清除笔记列表缓存
+    await cache.deletePattern('notes:page:.*')
+
     res.json({ success: true })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -2562,6 +2515,12 @@ app.put('/api/notes/:id', authenticateToken, async (req, res) => {
       `UPDATE notes SET title = $1, content = $2, ingredients = $3, steps = $4, images = $5, likes = $6, liked = $7 WHERE id = $8`,
       [title.trim(), content.trim(), ingredients, steps, images, likes, liked ? 1 : 0, req.params.id]
     )
+
+    // 清除笔记缓存
+    await cache.delete(CACHE_KEYS.NOTE_DETAIL(req.params.id, 'false'))
+    await cache.delete(CACHE_KEYS.NOTE_DETAIL(req.params.id, 'true'))
+    await cache.deletePattern('notes:page:.*')
+
     res.json({ success: true })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -2586,6 +2545,12 @@ app.delete('/api/notes/:id', authenticateToken, async (req, res) => {
   try {
     await query(`DELETE FROM notes WHERE id = $1`, [req.params.id])
     await query(`DELETE FROM comments WHERE note_id = $1`, [req.params.id])
+
+    // 清除笔记缓存
+    await cache.delete(CACHE_KEYS.NOTE_DETAIL(req.params.id, 'false'))
+    await cache.delete(CACHE_KEYS.NOTE_DETAIL(req.params.id, 'true'))
+    await cache.deletePattern('notes:page:.*')
+
     res.json({ success: true })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -2595,56 +2560,58 @@ app.delete('/api/notes/:id', authenticateToken, async (req, res) => {
 app.get('/api/notes/:id', async (req, res) => {
   try {
     const noteId = req.params.id
-    console.log('Getting note by id:', noteId)
-    
-    // 从 Supabase 查询真实的笔记数据
-    const { data: note, error } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('id', noteId)
-      .single()
-    
-    if (error) {
-      console.error('Error fetching note from Supabase:', error)
-      return res.json(null)
-    }
-    
-    if (!note) {
-      console.log('Note not found:', noteId)
-      return res.json(null)
-    }
-    
-    console.log('Found note:', note)
-    
-    // 获取作者头像
-    let authorAvatar = null
-    try {
-      const { data: authorData } = await supabase
-        .from('users')
-        .select('avatar')
-        .eq('id', note.author_id)
-        .single()
-      authorAvatar = authorData?.avatar || null
-    } catch (e) {
-      console.error('Error fetching author avatar:', e)
-    }
-    
-    // 处理图片数据
-    let images = note.images || []
-    if (typeof images === 'string') {
-      try {
-        images = JSON.parse(images)
-      } catch (parseError) {
-        console.error('Error parsing images:', parseError)
-        images = []
-      }
-    }
-    
-    // 默认只返回第一张图片，详情页需要加载全部
     const full = req.query.full === 'true'
-    note.images = full ? images : images.slice(0, 1)
-    note.author_avatar = authorAvatar
-    
+
+    const note = await cache.getOrSet(CACHE_KEYS.NOTE_DETAIL(noteId, full), async () => {
+      console.log('Getting note by id:', noteId)
+
+      const { data: note, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('id', noteId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching note from Supabase:', error)
+        return null
+      }
+
+      if (!note) {
+        console.log('Note not found:', noteId)
+        return null
+      }
+
+      // 获取作者头像
+      let authorAvatar = null
+      try {
+        const { data: authorData } = await supabase
+          .from('users')
+          .select('avatar')
+          .eq('id', note.author_id)
+          .single()
+        authorAvatar = authorData?.avatar || null
+      } catch (e) {
+        console.error('Error fetching author avatar:', e)
+      }
+
+      // 处理图片数据
+      let images = note.images || []
+      if (typeof images === 'string') {
+        try {
+          images = JSON.parse(images)
+        } catch (parseError) {
+          console.error('Error parsing images:', parseError)
+          images = []
+        }
+      }
+
+      // 默认只返回第一张图片，详情页需要加载全部
+      note.images = full ? images : images.slice(0, 1)
+      note.author_avatar = authorAvatar
+
+      return note
+    }, 300) // 5分钟缓存
+
     res.json(note)
   } catch (e) {
     console.error('Error getting note:', e)
@@ -2652,27 +2619,31 @@ app.get('/api/notes/:id', async (req, res) => {
   }
 })
 
-// 评论API
+// 评论API - 使用缓存
 app.get('/api/comments/:noteId', async (req, res) => {
   try {
-    const result = await query(
-      'SELECT * FROM comments WHERE note_id = $1 ORDER BY created_at DESC',
-      [req.params.noteId]
-    )
-    
-    const comments = result.rows.map(row => ({
-      id: row.id,
-      note_id: row.note_id,
-      user_id: row.user_id,
-      user_name: row.user_name,
-      user_avatar: row.user_avatar || null,
-      content: row.content,
-      reply_to_id: row.reply_to_id || null,
-      reply_to_user_name: row.reply_to_user_name || null,
-      reply_to_content: row.reply_to_content || null,
-      created_at: row.created_at
-    }))
-    
+    const { noteId } = req.params
+
+    const comments = await cache.getOrSet(CACHE_KEYS.COMMENTS_NOTE(noteId), async () => {
+      const result = await query(
+        'SELECT * FROM comments WHERE note_id = $1 ORDER BY created_at DESC',
+        [noteId]
+      )
+
+      return result.rows.map(row => ({
+        id: row.id,
+        note_id: row.note_id,
+        user_id: row.user_id,
+        user_name: row.user_name,
+        user_avatar: row.user_avatar || null,
+        content: row.content,
+        reply_to_id: row.reply_to_id || null,
+        reply_to_user_name: row.reply_to_user_name || null,
+        reply_to_content: row.reply_to_content || null,
+        created_at: row.created_at
+      }))
+    }, 300) // 5分钟缓存
+
     res.json(comments)
   } catch (e) {
     res.json([])
@@ -2696,6 +2667,10 @@ app.post('/api/comments', authenticateToken, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [id, note_id, user_id, user_name, user_avatar || null, content.trim(), reply_to_id || null, reply_to_user_name || null, reply_to_content || null, created_at]
     )
+
+    // 清除该笔记的评论缓存
+    await cache.delete(CACHE_KEYS.COMMENTS_NOTE(note_id))
+
     res.json({ success: true })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -2705,20 +2680,28 @@ app.post('/api/comments', authenticateToken, async (req, res) => {
 app.delete('/api/comments/:id', authenticateToken, async (req, res) => {
   // IDOR 防护：验证当前用户是否有权限删除该评论
   const currentUserId = req.user.userId
+  let noteId = null
   try {
-    const commentResult = await query('SELECT user_id FROM comments WHERE id = $1', [req.params.id])
+    const commentResult = await query('SELECT user_id, note_id FROM comments WHERE id = $1', [req.params.id])
     if (commentResult.rows.length === 0) {
       return res.json({ success: false, message: '评论不存在' })
     }
     if (commentResult.rows[0].user_id !== currentUserId) {
       return res.status(403).json({ success: false, message: '无权限删除此评论' })
     }
+    noteId = commentResult.rows[0].note_id
   } catch (e) {
     return res.json({ success: false, message: e.message })
   }
 
   try {
     await query(`DELETE FROM comments WHERE id = $1`, [req.params.id])
+
+    // 清除该笔记的评论缓存
+    if (noteId) {
+      await cache.delete(CACHE_KEYS.COMMENTS_NOTE(noteId))
+    }
+
     res.json({ success: true })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -2846,17 +2829,14 @@ app.put('/api/feedback/:id', authenticateToken, async (req, res) => {
 })
 
 // 启动服务器
-// 标签API
+// 标签API - 使用缓存
 app.get('/api/tags', async (req, res) => {
   try {
-    const cached = getCachedTags()
-    if (cached) {
-      return res.json(cached)
-    }
-    const tags = await tagRepo.findAll({ orderBy: { column: 'name', ascending: true } })
-    const tagList = tags.data || []
-    setCachedTags(tagList)
-    res.json(tagList)
+    const tags = await cache.getOrSet(CACHE_KEYS.TAGS_ALL, async () => {
+      const result = await tagRepo.findAll({ orderBy: { column: 'name', ascending: true } })
+      return result.data || []
+    }, 30) // 30秒缓存
+    res.json(tags)
   } catch (e) {
     console.error('Error fetching tags:', e)
     res.json([])
@@ -2866,12 +2846,14 @@ app.get('/api/tags', async (req, res) => {
 app.get('/api/tags/popular', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10
-    const tags = await tagRepo.findWithNoteCount(limit)
-    const sortedTags = tags.sort((a, b) => {
-      if (b.note_count !== a.note_count) return b.note_count - a.note_count
-      return a.name.localeCompare(b.name)
-    })
-    res.json(sortedTags)
+    const tags = await cache.getOrSet(CACHE_KEYS.TAGS_POPULAR(limit), async () => {
+      const result = await tagRepo.findWithNoteCount(limit)
+      return result.sort((a, b) => {
+        if (b.note_count !== a.note_count) return b.note_count - a.note_count
+        return a.name.localeCompare(b.name)
+      })
+    }, 30) // 30秒缓存
+    res.json(tags)
   } catch (e) {
     console.error('Error fetching popular tags:', e)
     res.json([])
@@ -2896,7 +2878,10 @@ app.post('/api/tags', authenticateToken, async (req, res) => {
       created_at: new Date().toISOString()
     })
 
-    setCachedTags(null)
+    // 清除标签缓存
+    await cache.delete(CACHE_KEYS.TAGS_ALL)
+    await cache.deletePattern('tags:popular:.*')
+
     res.json({ success: true, tag })
   } catch (e) {
     console.error('Error creating tag:', e)
@@ -2917,7 +2902,10 @@ app.put('/api/admin/tags/:id', authenticateToken, requireAdmin, async (req, res)
     }
 
     await tagRepo.update(req.params.id, { name: name.trim() })
-    setCachedTags(null)
+
+    // 清除标签缓存
+    await cache.delete(CACHE_KEYS.TAGS_ALL)
+    await cache.deletePattern('tags:popular:.*')
 
     res.json({ success: true })
   } catch (e) {
@@ -2931,7 +2919,10 @@ app.delete('/api/admin/tags/:id', authenticateToken, requireAdmin, async (req, r
     await supabase.from('note_tags').delete().eq('tag_id', req.params.id)
     await supabase.from('user_likes').delete().eq('tag_id', req.params.id)
     await tagRepo.delete(req.params.id)
-    setCachedTags(null)
+
+    // 清除标签缓存
+    await cache.delete(CACHE_KEYS.TAGS_ALL)
+    await cache.deletePattern('tags:popular:.*')
 
     res.json({ success: true })
   } catch (e) {
@@ -2942,31 +2933,35 @@ app.delete('/api/admin/tags/:id', authenticateToken, requireAdmin, async (req, r
 
 app.get('/api/notes/:id/tags', async (req, res) => {
   try {
-    const result = await query(
-      `SELECT t.id, t.name 
-       FROM tags t 
-       JOIN note_tags nt ON t.id = nt.tag_id 
-       WHERE nt.note_id = $1 
-       ORDER BY t.name`,
-      [req.params.id]
-    )
-    const tags = result.rows.map(row => ({
-      id: row.id,
-      name: row.name
-    }))
+    const noteId = req.params.id
+    const tags = await cache.getOrSet(CACHE_KEYS.NOTE_TAGS(noteId), async () => {
+      const result = await query(
+        `SELECT t.id, t.name
+         FROM tags t
+         JOIN note_tags nt ON t.id = nt.tag_id
+         WHERE nt.note_id = $1
+         ORDER BY t.name`,
+        [noteId]
+      )
+      return result.rows.map(row => ({
+        id: row.id,
+        name: row.name
+      }))
+    }, 300) // 5分钟缓存
     res.json(tags)
   } catch (e) {
+    console.error('Error fetching note tags:', e)
     res.json([])
   }
 })
 
 app.post('/api/notes/:id/tags', async (req, res) => {
   const { tagIds } = req.body
-  
+
   try {
     // 先删除该笔记的所有标签关联
     await query('DELETE FROM note_tags WHERE note_id = $1', [req.params.id])
-    
+
     // 添加新的标签关联，过滤空的tagId
     const validTagIds = tagIds.filter(tagId => tagId && tagId.trim() !== '')
     for (const tagId of validTagIds) {
@@ -2976,7 +2971,13 @@ app.post('/api/notes/:id/tags', async (req, res) => {
         [id, req.params.id, tagId]
       )
     }
-    
+
+    // 清除该笔记的标签缓存
+    await cache.delete(CACHE_KEYS.NOTE_TAGS(req.params.id))
+    // 清除标签列表缓存（因为note_count可能变化）
+    await cache.delete(CACHE_KEYS.TAGS_ALL)
+    await cache.deletePattern('tags:popular:.*')
+
     res.json({ success: true })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -3100,6 +3101,98 @@ app.get('/api/status', authenticateToken, requireAdmin, async (req, res) => {
     }
   } catch (e) {
     // 跳过数据库统计
+  }
+
+  // API接口列表
+  status.apis = {
+   认证登录: [
+      { method: 'POST', path: '/api/login', auth: false, desc: '用户登录' },
+      { method: 'POST', path: '/api/register', auth: false, desc: '用户注册' }
+    ],
+    用户管理: [
+      { method: 'GET', path: '/api/users', auth: 'admin', desc: '获取用户列表' },
+      { method: 'POST', path: '/api/users', auth: false, desc: '创建用户' },
+      { method: 'PUT', path: '/api/users/:id/password', auth: true, desc: '修改密码' },
+      { method: 'PUT', path: '/api/users/:id', auth: true, desc: '更新用户信息' },
+      { method: 'DELETE', path: '/api/users/:id', auth: 'admin', desc: '删除用户' },
+      { method: 'PUT', path: '/api/users/:id/status', auth: 'admin', desc: '修改用户状态' },
+      { method: 'PUT', path: '/api/users/:id/role', auth: 'admin', desc: '修改用户角色' },
+      { method: 'GET', path: '/api/users/:username', auth: false, desc: '按用户名查询用户' },
+      { method: 'GET', path: '/api/user/:id', auth: false, desc: '获取用户详情' },
+      { method: 'GET', path: '/api/user/:id/tags', auth: false, desc: '获取用户标签' }
+    ],
+    关注功能: [
+      { method: 'POST', path: '/api/users/:id/follow', auth: true, desc: '关注用户' },
+      { method: 'DELETE', path: '/api/users/:id/follow', auth: true, desc: '取消关注' },
+      { method: 'GET', path: '/api/users/:id/followers', auth: true, desc: '获取粉丝列表' },
+      { method: 'GET', path: '/api/users/:id/following', auth: true, desc: '获取关注列表' },
+      { method: 'GET', path: '/api/users/:id/follow-status/:targetId', auth: true, desc: '查询关注状态' },
+      { method: 'GET', path: '/api/users/:id/follow-counts', auth: false, desc: '获取关注计数' }
+    ],
+    笔记管理: [
+      { method: 'GET', path: '/api/notes', auth: false, desc: '获取笔记列表' },
+      { method: 'POST', path: '/api/notes', auth: true, desc: '创建笔记' },
+      { method: 'PUT', path: '/api/notes/:id', auth: true, desc: '更新笔记' },
+      { method: 'DELETE', path: '/api/notes/:id', auth: true, desc: '删除笔记' },
+      { method: 'GET', path: '/api/notes/:id', auth: false, desc: '获取笔记详情' },
+      { method: 'POST', path: '/api/notes/:id/like', auth: true, desc: '点赞笔记' },
+      { method: 'DELETE', path: '/api/notes/:id/like', auth: true, desc: '取消点赞' },
+      { method: 'GET', path: '/api/notes/:id/like-status', auth: true, desc: '查询点赞状态' },
+      { method: 'GET', path: '/api/notes/:id/tags', auth: false, desc: '获取笔记标签' },
+      { method: 'POST', path: '/api/notes/:id/tags', auth: true, desc: '添加笔记标签' }
+    ],
+    评论管理: [
+      { method: 'GET', path: '/api/comments/:noteId', auth: false, desc: '获取笔记评论' },
+      { method: 'POST', path: '/api/comments', auth: true, desc: '添加评论' },
+      { method: 'DELETE', path: '/api/comments/:id', auth: true, desc: '删除评论' }
+    ],
+    标签管理: [
+      { method: 'GET', path: '/api/tags', auth: false, desc: '获取所有标签' },
+      { method: 'GET', path: '/api/tags/popular', auth: false, desc: '获取热门标签' },
+      { method: 'POST', path: '/api/tags', auth: true, desc: '创建标签' },
+      { method: 'GET', path: '/api/tags/:id/notes', auth: false, desc: '按标签查询笔记' },
+      { method: 'PUT', path: '/api/admin/tags/:id', auth: 'admin', desc: '更新标签(admin)' },
+      { method: 'DELETE', path: '/api/admin/tags/:id', auth: 'admin', desc: '删除标签(admin)' }
+    ],
+    反馈管理: [
+      { method: 'POST', path: '/api/feedback', auth: true, desc: '提交反馈' },
+      { method: 'GET', path: '/api/feedback', auth: 'admin', desc: '获取所有反馈(admin)' },
+      { method: 'GET', path: '/api/feedback/me', auth: true, desc: '获取我的反馈' },
+      { method: 'PUT', path: '/api/feedback/:id', auth: true, desc: '更新反馈' }
+    ],
+    文件上传: [
+      { method: 'POST', path: '/api/upload', auth: true, desc: '上传文件' },
+      { method: 'GET', path: '/api/my/uploads', auth: true, desc: '我的上传列表' },
+      { method: 'DELETE', path: '/api/my/uploads', auth: true, desc: '删除上传文件' }
+    ],
+    管理员_系统状态: [
+      { method: 'GET', path: '/api/status', auth: 'admin', desc: '系统状态监控' },
+      { method: 'GET', path: '/api/admin/cache/status', auth: 'admin', desc: '缓存状态' },
+      { method: 'GET', path: '/api/admin/cache/config', auth: 'admin', desc: '缓存配置' },
+      { method: 'PUT', path: '/api/admin/cache/config', auth: 'admin', desc: '更新缓存配置' },
+      { method: 'POST', path: '/api/admin/cache/clear', auth: 'admin', desc: '清空缓存' },
+      { method: 'GET', path: '/api/admin/cache/:key', auth: 'admin', desc: '查看缓存键内容' },
+      { method: 'DELETE', path: '/api/admin/cache/:key', auth: 'admin', desc: '删除缓存键' },
+      { method: 'POST', path: '/api/admin/cache/clear-pattern', auth: 'admin', desc: '按模式清空缓存' }
+    ],
+    管理员_数据库: [
+      { method: 'GET', path: '/api/db/info', auth: 'admin', desc: '数据库信息' },
+      { method: 'GET', path: '/api/db/tables', auth: 'admin', desc: '数据表列表' },
+      { method: 'GET', path: '/api/db/table/:tableName', auth: 'admin', desc: '查看表数据' },
+      { method: 'GET', path: '/api/db/table/:tableName/structure', auth: 'admin', desc: '表结构' },
+      { method: 'POST', path: '/api/db/query', auth: 'admin', desc: '执行SQL查询' },
+      { method: 'GET', path: '/api/db/backup', auth: 'admin', desc: '数据库备份' }
+    ],
+    管理员_用户表: [
+      { method: 'POST', path: '/api/user-uploads/create-table', auth: 'admin', desc: '创建用户上传表' },
+      { method: 'POST', path: '/api/test/create-table', auth: 'admin', desc: '创建测试表' },
+      { method: 'POST', path: '/api/test/insert-data', auth: 'admin', desc: '插入测试数据' },
+      { method: 'GET', path: '/api/test/data', auth: 'admin', desc: '查询测试数据' }
+    ],
+    公开接口: [
+      { method: 'GET', path: '/api/health', auth: false, desc: '健康检查' },
+      { method: 'GET', path: '/api/test/supabase-ddl', auth: false, desc: 'Supabase DDL测试' }
+    ]
   }
 
   res.json({ success: true, status })
@@ -3256,6 +3349,109 @@ app.get('/api/db/backup', authenticateToken, requireAdmin, async (req, res) => {
   }
 })
 
+// ============================================
+// 缓存管理 API
+// ============================================
+
+// GET /api/admin/cache/status - 获取缓存状态
+app.get('/api/admin/cache/status', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const stats = await cache.getStats()
+    res.json({
+      success: true,
+      data: {
+        backend: stats.backend,
+        keysCount: stats.keysCount || stats.keys?.length || 0,
+        keys: stats.keys || [],
+        hits: stats.hits || 0,
+        misses: stats.misses || 0,
+        sets: stats.sets || 0,
+        deletes: stats.deletes || 0,
+        hitRate: stats.hitRate || 'N/A'
+      }
+    })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// GET /api/admin/cache/config - 获取缓存配置
+app.get('/api/admin/cache/config', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const config = cache.getConfig()
+    res.json({
+      success: true,
+      data: {
+        stdTTL: config.stdTTL,
+        checkperiod: config.checkperiod
+      }
+    })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// PUT /api/admin/cache/config - 更新缓存配置
+app.put('/api/admin/cache/config', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { stdTTL, checkperiod } = req.body
+    const newConfig = {}
+    if (stdTTL !== undefined) newConfig.stdTTL = parseInt(stdTTL)
+    if (checkperiod !== undefined) newConfig.checkperiod = parseInt(checkperiod)
+    const updated = cache.updateConfig(newConfig)
+    res.json({ success: true, message: 'Cache config updated', data: updated })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// POST /api/admin/cache/clear - 清空所有缓存
+app.post('/api/admin/cache/clear', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await cache.clear()
+    res.json({ success: true, message: 'Cache cleared successfully' })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// GET /api/admin/cache/:key - 查看指定缓存键内容
+app.get('/api/admin/cache/:key(*)', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const value = await cache.get(req.params.key)
+    if (value === null || value === undefined) {
+      return res.json({ success: false, message: 'Key not found in cache' })
+    }
+    res.json({ success: true, data: value })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// DELETE /api/admin/cache/:key - 删除指定缓存键
+app.delete('/api/admin/cache/:key(*)', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await cache.delete(req.params.key)
+    res.json({ success: true, message: 'Cache key deleted' })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
+// POST /api/admin/cache/clear-pattern - 按模式清空缓存
+app.post('/api/admin/cache/clear-pattern', authenticateToken, requireAdmin, async (req, res) => {
+  const { pattern } = req.body
+  if (!pattern) {
+    return res.json({ success: false, message: 'Pattern required' })
+  }
+  try {
+    await cache.deletePattern(pattern)
+    res.json({ success: true, message: `Cleared cache matching: ${pattern}` })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
 // 生产环境下处理前端路由
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
@@ -3265,6 +3461,19 @@ if (process.env.NODE_ENV === 'production') {
 
 // 服务器启动
 function startServer() {
+  // 优雅关闭 - 关闭缓存连接
+  process.on('SIGTERM', async () => {
+    logger.info('SIGTERM received, closing cache connections...')
+    await cache.close()
+    process.exit(0)
+  })
+
+  process.on('SIGINT', async () => {
+    logger.info('SIGINT received, closing cache connections...')
+    await cache.close()
+    process.exit(0)
+  })
+
   // 直接启动服务器，不等待数据库初始化
   app.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`)
@@ -3276,10 +3485,38 @@ function startServer() {
   // 后台初始化数据库
   initDb().then(() => {
     console.log('Database initialized successfully')
+    // 缓存预热
+    warmCache()
   }).catch((err) => {
     console.error('Failed to initialize database:', err)
     console.log('Server is running without database initialization...')
   })
+}
+
+// 缓存预热函数
+async function warmCache() {
+  console.log('Warming cache...')
+  try {
+    // 预热热门标签
+    await cache.getOrSet(CACHE_KEYS.TAGS_POPULAR(10), async () => {
+      const result = await tagRepo.findWithNoteCount(10)
+      return result.sort((a, b) => {
+        if (b.note_count !== a.note_count) return b.note_count - a.note_count
+        return a.name.localeCompare(b.name)
+      })
+    }, 30)
+    console.log('Cache warmed: popular tags')
+
+    // 预热第一页笔记
+    await cache.getOrSet(CACHE_KEYS.NOTES_PAGE(1, 10, null), async () => {
+      return { notes: [], total: 0, page: 1, limit: 10 }
+    }, 60)
+    console.log('Cache warmed: first page notes')
+
+    console.log('Cache warming complete')
+  } catch (e) {
+    console.error('Cache warming failed:', e)
+  }
 }
 
 startServer()

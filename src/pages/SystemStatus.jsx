@@ -39,8 +39,6 @@ const SystemStatus = () => {
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [qrUrl, setQrUrl] = useState(() => localStorage.getItem('posterQrUrl') || 'https://xiaohongshu-1k78.onrender.com/')
-  const [qrUrlSaved, setQrUrlSaved] = useState(false)
 
   // 格式化字节为可读大小
   const formatBytes = (bytes) => {
@@ -320,58 +318,6 @@ const SystemStatus = () => {
           <p>总请求: <span className="value">{status?.requests?.total || 0}</span></p>
           <p>错误: <span className="value">{status?.requests?.errors || 0}</span></p>
           <p>今日: <span className="value">{status?.accessStats?.daily?.[new Date().toISOString().split('T')[0]] || 0}</span></p>
-        </div>
-      </div>
-
-      {/* 海报设置 */}
-      <div className="status-cards" style={{ marginTop: '20px' }}>
-        <div className="status-card" style={{ maxWidth: '600px' }}>
-          <h3>海报二维码设置</h3>
-          <p style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>
-            设置海报底部二维码扫描后访问的网址
-          </p>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              type="text"
-              value={qrUrl}
-              onChange={(e) => {
-                setQrUrl(e.target.value)
-                setQrUrlSaved(false)
-              }}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-              placeholder="输入二维码指向的网址"
-            />
-            <button
-              onClick={() => {
-                localStorage.setItem('posterQrUrl', qrUrl)
-                setQrUrlSaved(true)
-                setTimeout(() => setQrUrlSaved(false), 2000)
-              }}
-              style={{
-                padding: '8px 16px',
-                background: '#ff6b6b',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              保存
-            </button>
-          </div>
-          {qrUrlSaved && (
-            <p style={{ color: '#52c41a', fontSize: '12px', marginTop: '8px' }}>保存成功！</p>
-          )}
-          <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-            当前值: {qrUrl}
-          </p>
         </div>
       </div>
 

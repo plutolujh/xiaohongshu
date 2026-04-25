@@ -8,7 +8,7 @@ export default function Footer() {
   const { themeMode, setTheme, ThemeMode } = useTheme()
   const { language } = useI18n()
   const [appInfo, setAppInfo] = useState({
-    version: '2.4.2',
+    version: '2.4.3',
     lastPublishTime: new Date().toLocaleString()
   })
 
@@ -23,7 +23,7 @@ export default function Footer() {
           const data = await response.json()
           if (data.success && data.status) {
             setAppInfo({
-              version: data.status.version || '1.0.0',
+              version: data.status.version || '2.4.3',
               lastPublishTime: data.status.lastPublishTime || new Date().toLocaleString()
             })
           }

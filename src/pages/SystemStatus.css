@@ -161,3 +161,78 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* API列表样式 */
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 30px 0 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #ff6b6b;
+}
+
+.api-path {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* HTTP方法标签 */
+.method-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.method-get {
+  background: #4CAF50;
+}
+
+.method-post {
+  background: #2196F3;
+}
+
+.method-put {
+  background: #FF9800;
+}
+
+.method-delete {
+  background: #f44336;
+}
+
+/* 认证标签 */
+.auth-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.auth-public,
+.auth-false {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.auth-login,
+.auth-true {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.auth-admin {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.api-list-section .status-card {
+  overflow-x: auto;
+}

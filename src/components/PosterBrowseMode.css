@@ -109,8 +109,8 @@
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   font-size: 28px;
   cursor: pointer;
@@ -119,11 +119,19 @@
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .btn-nav:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.1);
+}
+
+.btn-nav:active {
+  transform: scale(0.95);
 }
 
 .btn-nav:disabled {
@@ -375,14 +383,19 @@
   }
 
   .btn-nav {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     font-size: 24px;
+    min-touch-target: 44px;
   }
 
   .poster-display {
-    width: 320px;
-    height: 480px;
+    width: 90vw;
+    max-width: 360px;
+    height: auto;
+    min-height: 540px;
+    max-height: 85vh;
+    overflow-y: auto;
   }
 
   .poster-browse-header {
@@ -419,8 +432,10 @@
 
 @media (max-width: 480px) {
   .poster-display {
-    width: 280px;
-    height: 420px;
+    width: 95vw;
+    max-width: 320px;
+    min-height: 480px;
+    max-height: 80vh;
   }
 
   .poster-content {
@@ -428,8 +443,9 @@
   }
 
   .btn-control {
-    padding: 6px 8px;
+    padding: 10px 14px;
     font-size: 14px;
+    min-height: 44px;
   }
 
   .poster-title {

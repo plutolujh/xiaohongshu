@@ -43,11 +43,13 @@ export default function Navbar() {
               {isAdmin && (
                 <>
                   <Link to="/system-status" className="navbar-link">{t('navbar.systemStatus', language)}</Link>
+                  <Link to="/system-settings" className="navbar-link">⚙️ 系统设置</Link>
                   <Link to="/user-management" className="navbar-link">{t('navbar.userManagement', language)}</Link>
                   <Link to="/tag-management" className="navbar-link">{t('navbar.tagManagement', language)}</Link>
                   <Link to="/note-management" className="navbar-link">{t('navbar.noteManagement', language)}</Link>
                   <Link to="/feedback-management" className="navbar-link">{t('navbar.feedbackManagement', language)}</Link>
                   <Link to="/database-management" className="navbar-link">{t('navbar.databaseManagement', language)}</Link>
+                  <Link to="/developer-center" className="navbar-link navbar-admin">🛠️ 开发工具</Link>
                 </>
               )}
               <button onClick={handleLogout} className="navbar-link navbar-logout">
@@ -98,8 +100,7 @@ export default function Navbar() {
       </div>
       
       {/* 移动端菜单 */}
-      {isMenuOpen && (
-        <div className="navbar-mobile-menu">
+      <div className={`navbar-mobile-menu ${isMenuOpen ? 'open' : ''}`}>
           <Link to="/" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.home', language)}</Link>
           {user ? (
             <>
@@ -109,11 +110,13 @@ export default function Navbar() {
               {isAdmin && (
                 <>
                   <Link to="/system-status" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.systemStatus', language)}</Link>
+                  <Link to="/system-settings" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>⚙️ 系统设置</Link>
                   <Link to="/user-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.userManagement', language)}</Link>
                   <Link to="/tag-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.tagManagement', language)}</Link>
                   <Link to="/note-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.noteManagement', language)}</Link>
                   <Link to="/feedback-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.feedbackManagement', language)}</Link>
                   <Link to="/database-management" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>{t('navbar.databaseManagement', language)}</Link>
+                  <Link to="/developer-center" className="navbar-mobile-link" onClick={() => setIsMenuOpen(false)}>🛠️ 开发工具</Link>
                 </>
               )}
               <button onClick={() => {
@@ -166,7 +169,6 @@ export default function Navbar() {
             </>
           )}
         </div>
-      )}
     </nav>
   )
 }
