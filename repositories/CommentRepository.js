@@ -36,7 +36,8 @@ export class CommentRepository extends BaseRepository {
         note_id: commentData.noteId || commentData.note_id,
         user_id: commentData.userId || commentData.user_id,
         content: commentData.content,
-        user_name: commentData.userName || commentData.user_name
+        user_name: commentData.userName || commentData.user_name,
+        user_avatar: commentData.userAvatar || commentData.user_avatar
       })
       .select()
       .single()

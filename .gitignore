@@ -49,6 +49,10 @@ test*
 #prompt
 prompt.md
 
+# 项目内部文档 - 不同步
+IMPROVEMENT_ROADMAP.md
+INTERNAL_*.md
+
 #fix
 fix.md
 

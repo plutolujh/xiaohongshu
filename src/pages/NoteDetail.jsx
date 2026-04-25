@@ -136,6 +136,7 @@ export default function NoteDetail() {
         note_id: id,
         user_id: user.id,
         user_name: user.nickname,
+        user_avatar: user.avatar,
         content: newComment.trim(),
         created_at: new Date().toISOString()
       }
@@ -366,7 +367,7 @@ export default function NoteDetail() {
             <div className="comment-list">
               {comments.map(comment => (
                 <div key={comment.id} className="comment-item">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user_id}`} alt={comment.user_name} className="comment-avatar" />
+                  <img src={comment.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user_id}`} alt={comment.user_name} className="comment-avatar" />
                   <div className="comment-content">
                     <div className="comment-header">
                       <span className="comment-author">{comment.user_name}</span>

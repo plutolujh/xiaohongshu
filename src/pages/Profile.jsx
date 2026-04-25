@@ -512,6 +512,7 @@ export default function Profile({ isOtherUser = false, userId: propUserId }) {
     e.preventDefault()
     if (!user) return
 
+    console.log('handlePasswordChange - user.id:', user.id, 'user:', user)
     setLoading(true)
     try {
       // 这里需要添加修改密码的API调用

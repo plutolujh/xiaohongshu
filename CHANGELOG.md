@@ -1,5 +1,42 @@
 # 项目修改日志
 
+## [2.4.1] - 2026-04-25
+
+### Bug 修复
+
+#### 1. 个人资料页密码修改失败
+- **问题**: 在个人资料页修改密码时提示"更新失败"
+- **原因**:
+  - `/api/users/:id/password` 路由被 `/api/users/:id` 通配路由匹配
+  - SQL 解析将 password 更新语句错误匹配到通用用户更新逻辑
+- **修复**:
+  - 将 `/api/users/:id/password` 路由移到 `/api/users/:id` 之前
+  - 在 `query` 函数中添加 password 特殊处理分支
+- **修改文件**: `server.js`
+
+#### 2. 笔记评论头像未关联用户真实头像
+- **问题**: 评论中显示的头像是默认生成的，而非用户上传的真实头像
+- **原因**: 创建评论时只保存了 `user_id` 和 `user_name`，未保存 `user_avatar`
+- **修复**:
+  - 在 `NoteDetail.jsx` 创建评论时添加 `user_avatar` 字段
+  - 在 `CommentRepository.createComment` 中添加 `user_avatar` 字段处理
+  - 后端 API 响应时返回 `user_avatar` 字段
+- **修改文件**:
+  - `server.js` - 评论 API 响应添加 user_avatar
+  - `src/pages/NoteDetail.jsx` - 评论数据包含 user_avatar
+  - `repositories/CommentRepository.js` - createComment 添加 user_avatar
+
+### 新增功能
+
+#### 1. 风景打卡笔记模板
+- **功能**: 新增"风景打卡"笔记模板，适合分享风景地打卡体验
+- **模板内容**:
+  - 标题格式：`XXX打卡｜超美的风景地`
+  - 包含地点、地址、亮点、最佳拍摄时间、门票、停车信息
+  - 食材区：推荐打卡点、建议携带物品
+  - 做法区：拍照攻略、游览路线、温馨提示
+- **修改文件**: `src/pages/Publish.jsx`
+
 ## [2.2.0] - 2026-04-11
 
 ### Bug 修复

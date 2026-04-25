@@ -102,12 +102,15 @@ testSupabaseConnection()
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization']
   const token = authHeader && authHeader.split(' ')[1]
-  
+
+  console.log('authenticateToken - token exists:', !!token, 'token prefix:', token ? token.substring(0, 20) : null)
+
   if (!token) {
     return res.json({ success: false, message: '需要认证' })
   }
-  
+
   jwt.verify(token, JWT_SECRET, (err, user) => {
+    console.log('jwt.verify callback - err:', err, 'user:', user)
     if (err) {
       return res.json({ success: false, message: '无效的token' })
     }
@@ -626,6 +629,7 @@ async function initDb() {
     await createIndexes()
     await ensureUserProfileColumns()
     await ensureUserUploadsTable()
+    await ensureCommentAvatarColumn()
 
     console.log('Database initialized successfully')
   } catch (error) {
@@ -660,6 +664,18 @@ async function ensureUserProfileColumns() {
     console.log('User profile columns ensured')
   } catch (error) {
     console.error('Error ensuring user profile columns:', error)
+  }
+}
+
+// 确保 comments 表有 user_avatar 列
+async function ensureCommentAvatarColumn() {
+  try {
+    await supabase.rpc('execute_sql', {
+      sql: `ALTER TABLE comments ADD COLUMN IF NOT EXISTS user_avatar TEXT`
+    })
+    console.log('Comment avatar column ensured')
+  } catch (error) {
+    console.error('Error ensuring comment avatar column:', error)
   }
 }
 
@@ -847,9 +863,22 @@ async function query(text, params) {
               .from('users')
               .update({ status })
               .eq('id', userId)
-            
+
             if (error) {
               console.error('Error updating user status:', error)
+              throw error
+            }
+          } else if (text.includes('password')) {
+            const password = params[0]
+            const userId = params[1]
+            console.log('Updating user password:', { userId, password: '[HIDDEN]' })
+            const { error } = await supabase
+              .from('users')
+              .update({ password })
+              .eq('id', userId)
+
+            if (error) {
+              console.error('Error updating user password:', error)
               throw error
             }
           } else {
@@ -1633,6 +1662,48 @@ app.post('/api/users', async (req, res) => {
   }
 })
 
+// 修改密码API - 注意：这个路由必须放在 /api/users/:id 之前，否则会被误匹配
+app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
+  const { oldPassword, newPassword } = req.body
+
+  // IDOR 防护：验证当前用户是否有权限修改该用户密码
+  const currentUserId = req.user ? req.user.userId : 'req.user is null/undefined'
+  const targetUserId = req.params.id
+  console.log('修改密码 - currentUserId:', currentUserId, 'targetUserId:', targetUserId, '类型:', typeof currentUserId, typeof targetUserId)
+  console.log('修改密码 - 是否相等:', currentUserId === targetUserId, 'req.user:', req.user, 'req.user.userId:', req.user ? req.user.userId : 'N/A')
+  if (currentUserId !== targetUserId) {
+    return res.status(403).json({ success: false, message: '无权限修改此用户密码' })
+  }
+
+  try {
+    // 验证旧密码
+    const result = await query('SELECT password FROM users WHERE id = $1', [req.params.id])
+    if (result.rows.length === 0) {
+      return res.json({ success: false, message: '用户不存在' })
+    }
+
+    const user = result.rows[0]
+    const passwordMatch = await bcrypt.compare(oldPassword, user.password)
+    if (!passwordMatch) {
+      return res.json({ success: false, message: '旧密码错误' })
+    }
+
+    // 验证新密码长度
+    if (newPassword.length < 6) {
+      return res.json({ success: false, message: '密码长度至少6位' })
+    }
+
+    // 更新密码
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    await query(`UPDATE users SET password = $1 WHERE id = $2`,
+      [hashedPassword, req.params.id]
+    )
+    res.json({ success: true })
+  } catch (e) {
+    res.json({ success: false, message: e.message })
+  }
+})
+
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
   const { nickname, avatar, bio, background, background_blur } = req.body
 
@@ -1664,46 +1735,6 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     await query(
       `UPDATE users SET nickname = $1, avatar = $2, bio = $3, background = $4 WHERE id = $5`,
       [nickname.trim(), avatar, bio ? bio.trim() : '', background || '', req.params.id]
-    )
-    res.json({ success: true })
-  } catch (e) {
-    res.json({ success: false, message: e.message })
-  }
-})
-
-// 修改密码API
-app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
-  const { oldPassword, newPassword } = req.body
-
-  // IDOR 防护：验证当前用户是否有权限修改该用户密码
-  const currentUserId = req.user.userId
-  const targetUserId = req.params.id
-  if (currentUserId !== targetUserId) {
-    return res.status(403).json({ success: false, message: '无权限修改此用户密码' })
-  }
-
-  try {
-    // 验证旧密码
-    const result = await query('SELECT password FROM users WHERE id = $1', [req.params.id])
-    if (result.rows.length === 0) {
-      return res.json({ success: false, message: '用户不存在' })
-    }
-    
-    const user = result.rows[0]
-    const passwordMatch = await bcrypt.compare(oldPassword, user.password)
-    if (!passwordMatch) {
-      return res.json({ success: false, message: '旧密码错误' })
-    }
-    
-    // 验证新密码长度
-    if (newPassword.length < 6) {
-      return res.json({ success: false, message: '密码长度至少6位' })
-    }
-    
-    // 更新密码
-    const hashedPassword = await bcrypt.hash(newPassword, 10)
-    await query(`UPDATE users SET password = $1 WHERE id = $2`,
-      [hashedPassword, req.params.id]
     )
     res.json({ success: true })
   } catch (e) {
@@ -2112,25 +2143,27 @@ app.post('/api/login', authLimiter, async (req, res) => {
     if (result.rows.length === 0) {
       return res.json({ success: false, message: '用户名或密码错误' })
     }
-    
+
     const user = result.rows[0]
-    
+    console.log('登录 - user.id:', user.id, 'user对象 keys:', Object.keys(user))
+
     // 检查用户状态
     if (user.status === 'inactive') {
       return res.json({ success: false, message: '用户已被停用，请联系管理员' })
     }
-    
+
     const passwordMatch = await bcrypt.compare(password, user.password)
     if (!passwordMatch) {
       return res.json({ success: false, message: '用户名或密码错误' })
     }
-    
+
     // 移除密码字段
     delete user.password
-    
+
     // 生成JWT token
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' })
-    
+    console.log('登录 - token payload userId:', user.id)
+
     res.json({ success: true, user, token })
   } catch (e) {
     res.json({ success: false, message: e.message })
@@ -2511,6 +2544,7 @@ app.get('/api/comments/:noteId', async (req, res) => {
       note_id: row.note_id,
       user_id: row.user_id,
       user_name: row.user_name,
+      user_avatar: row.user_avatar || null,
       content: row.content,
       reply_to_id: row.reply_to_id || null,
       reply_to_user_name: row.reply_to_user_name || null,
@@ -2525,8 +2559,8 @@ app.get('/api/comments/:noteId', async (req, res) => {
 })
 
 app.post('/api/comments', authenticateToken, async (req, res) => {
-  const { id, note_id, user_id, user_name, content, reply_to_id, reply_to_user_name, reply_to_content, created_at } = req.body
-  
+  const { id, note_id, user_id, user_name, user_avatar, content, reply_to_id, reply_to_user_name, reply_to_content, created_at } = req.body
+
   // 输入验证
   if (!content || content.trim().length === 0) {
     return res.json({ success: false, message: '评论内容不能为空' })
@@ -2534,12 +2568,12 @@ app.post('/api/comments', authenticateToken, async (req, res) => {
   if (content.length > 500) {
     return res.json({ success: false, message: '评论内容不能超过500个字符' })
   }
-  
+
   try {
     await query(
-      `INSERT INTO comments (id, note_id, user_id, user_name, content, reply_to_id, reply_to_user_name, reply_to_content, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [id, note_id, user_id, user_name, content.trim(), reply_to_id || null, reply_to_user_name || null, reply_to_content || null, created_at]
+      `INSERT INTO comments (id, note_id, user_id, user_name, user_avatar, content, reply_to_id, reply_to_user_name, reply_to_content, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [id, note_id, user_id, user_name, user_avatar || null, content.trim(), reply_to_id || null, reply_to_user_name || null, reply_to_content || null, created_at]
     )
     res.json({ success: true })
   } catch (e) {
