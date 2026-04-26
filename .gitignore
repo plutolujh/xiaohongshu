@@ -9,6 +9,7 @@ build/
 .env
 .env.local
 .env.production
+.env*
 
 # Database
 database.sqlite
@@ -21,6 +22,8 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+frontend.log
+server.log
 
 # IDE
 .vscode/
@@ -38,25 +41,62 @@ tmp/
 temp/
 .cache/
 
-
+# Playwright
 .playwright-mcp
-.claude.md
 
-
-screenshot*
-test*
-
-#prompt
+# Project docs
 prompt.md
-
-# 项目内部文档 - 不同步
 IMPROVEMENT_ROADMAP.md
 INTERNAL_*.md
-
-#fix
 fix.md
 
-test*
-.env*
+# Local data and temp files
+download/
+pi-server/
+image-urls.txt
+supabase-export.json
+create-import-sql.js
+create-url-update.js
+export-supabase.js
+extract-images.js
+download-images.sh
+import-sqlite.sql
+update-urls.sql
 
+# Test files and screenshots
+screenshot*
+test*
+test-results/
+test-screenshot.png
+
+# Backup files
 .backupnote*
+
+# AI agent/tooling directories
+.adal/
+.agents/
+.augment/
+.codebuddy/
+.continue/
+.cortex/
+.crush/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
